@@ -1,0 +1,1613 @@
+﻿<!--This code is developed by Hakim MABED hmabed@gmail.com                       -->
+<!--14/04/2019                                                                   -->
+<!--Only for educational and personal use                                        -->
+<!--Objective: Provide a tool for radio network engineering, training and testing-->
+
+
+<!DOCTYPE html>
+<html>
+<head>
+	
+	<meta name="viewport" content="initial-scale=1.0, user-scalable=no">
+	<meta charset="utf-8">
+
+	<title>Mobile Network Optimization Tool</title>     
+	<link rel="shortcut icon" type="image/x-icon" href="icon.ico">
+
+	<link rel="stylesheet" href="https://unpkg.com/leaflet@1.4.0/dist/leaflet.css"
+	integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
+	crossorigin=""/>
+
+	<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
+	integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
+	crossorigin=""></script>
+	<script src="leaflet.rotatedMarker.js"></script>
+	<script src='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.js'></script>	
+	<script src='http://cdn.osmbuildings.org/OSMBuildings-Leaflet.js'></script> 
+	<script src="https://unpkg.com/osmtogeojson@2.2.12/osmtogeojson.js"></script> 
+
+	<script src="leaflet-tilelayer-colorpicker.js"></script>
+	<link href='https://api.mapbox.com/mapbox.js/v3.3.1/mapbox.css' rel='stylesheet' />
+	<script src="https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.js"></script>
+	<link href="https://api.tiles.mapbox.com/mapbox-gl-js/v2.2.0/mapbox-gl.css" rel="stylesheet">
+	<script src="jquery-3.6.0.js"></script>
+	<script src="https://npmcdn.com/leaflet-geometryutil"></script>
+	<style>
+		/* css to customize Leaflet default styles  */
+		.popupCustom .leaflet-popup-tip,
+		.popupCustom .leaflet-popup-content-wrapper {
+			background: #e0e0e0;
+			color: #234c5e;
+		}
+	</style>
+	<style>
+		html, body, #map-canvas {
+		height: 100%;
+		margin: 0px;
+		padding: 0px
+		}
+		label {
+        	display: inline-block;
+        	width: 130px;
+      	}
+		hr.dashed {
+  			border-top: 3px dashed rgb(8, 69, 167);
+		}
+	</style>
+	<style type="text/css">
+		body
+		{
+		   background-color: #FFFFFF;
+		   color: #000000;
+		   font-family: Arial;
+		   font-size: 13px;
+		   margin: 0;
+		   padding: 0;
+		}
+	</style>
+
+	<style type="text/css">
+		#conteneur {width:100%; height:90%;margin:0 auto;}
+		#header {background-color: #FFD700;width:100%;}
+		#footer {background-color: #FFD700;height:20px;width:100%;}
+		#sidebar {position:absolute;background-color: #469aa5;width:230px;height: 89vh;}
+		#contenu {margin-left:230px;}
+		#mapid { height: 89vh; }
+
+		#Combobox1
+		{
+		   border: 1px #A9A9A9 solid;
+		   background-color: #FFFFFF;
+		   color: #000000;
+		   font-family: Arial;
+		   font-size: 13px;
+		}
+
+		#message
+		{
+		   border: 0px #A9A9A9 solid;
+		   background-color: #FFD700;
+		   font-family: Arial;
+		   font-size: 13px;
+		}
+	</style>
+
+	<script src="jquery.min.js"></script>
+	<script>
+	class Network{
+		constructor(){
+			this.name="undefined";
+			this.antennas=[]; //set of net.antennas
+			this.sites=[]; //set of net.sites
+			this.buildings=[]; //set of net.buildings
+			this.areaWidth =100; //Number of columns of the deployment area by default
+			this.areaHeight =100; //Number of lines of the deployment area by default
+			this.binSize=5;			//lenght of a square bin in meters
+			this.southCorner;//the south-East point of the deployment area
+			
+			this.sensitivityThreshold=-140;  // sensitivity threshold : minimum thereshold allowing that the phone detects the signal 
+			this.lowQialityThreshold=-120;
+			this.highQualityThreshold=-100;
+			this.expositionThreshold=-115;
+			this.nbantennas=0;     	//number of net.antennas
+			this.nextid=0;			//id of next added antenna
+			this.nbsites=0;			
+		}
+	}
+	class Building{
+		constructor(polygon=null)
+		{
+			this.polygon=L.polygon(polygon);
+			this.height=3;
+		}
+	}
+	class Site{
+		constructor(name,location)
+		{
+			this.name=name;
+			this.location=location;
+			this.antennas=[];
+		}
+	}
+	class Antenna {
+		constructor(location){
+			//antenna=new AntennaConstructor(selectedSite.location,true);
+			this.location=location;
+			this.techno="";
+			this.spectrum=1800;				//in MHz
+			this.bandwidth=5000;			//in MHz
+			this.height=0;					//in meters
+			this.name="unknown";			
+			this.id=net.nextid;					//antenna id - unique id
+			net.nextid++;
+			this.omni = true;
+			this.tilt = 0;					//in degrees
+			this.azimut=0;
+			this.power = 20;				//in dB
+		}
+	}
+	
+
+	//Input Data
+	//The deployment area is subdivided into blocks, each block is subdivided into bins (geographical points)
+	var net=new Network();    //the current mobile network
+	var colorPicker;
+	
+	
+	var latBin; 	//Lat size of a bin (about binSize metres)
+	var lngBin;		//Lng size a bin (about binSize metres)
+	
+	var relief = [];    	//elevation of the natural landscape 
+	var architecture = [];	//elevation of the net.buildings 
+	var elevation=[];	//the total elevation of natural landscape and net.buildings
+	
+	
+	var antenna;
+	var CCost=0;							//Cost Hata propagation model parameter
+	var carto=false;
+	var bins=[];
+
+	var firstpropag=true //the relief table should be normalized at the beginning
+	
+	
+
+	var powerMatrix=[];      //power received of each bin (x,y) from an antenna (z) = powerMatrix[z][x][y]
+	//directional antenna radiation pattern
+	var VertRadiationPattern = [
+	0, -4, -8, -12, -15, -17, -18, -19, -20, -23, -26, -28, -30, -31, -31, -30, -27, -23, -18, -23, -27, -31, -33, -34, -33, -31, -29, -26, -23, -20, -18, -19, -20, -19, -19, -18, -18, -18, -19, -19, -20, -19, -18, -20, -23, -26, -29, -31, -33, -34, -33, -31, -27, -23, -18, -23, -27, -30, -31, -31, -30, -28, -26, -23, -20, -19, -18, -17, -15, -12, -8, -4, 0
+	];
+	var HorzRadiationPattern = [
+	0, -4, -8, -12, -15, -17, -18, -19, -20, -23, -26, -28, -30, -31, -31, -30, -27, -23, -18, -23, -27, -31, -33, -34, -33, -31, -29, -26, -23, -20, -18, -19, -20, -19, -19, -18, -18, -18, -19, -19, -20, -19, -18, -20, -23, -26, -29, -31, -33, -34, -33, -31, -27, -23, -18, -23, -27, -30, -31, -31, -30, -28, -26, -23, -20, -19, -18, -17, -15, -12, -8, -4, 0
+	];
+	var group1 = L.featureGroup();
+	
+	
+	//user's interaction variable
+	var modeclick=0;					//interactive phase mode : which kind of action is expected from the user
+										//0:select area's SW corner or load net, 1: add site, 2: no action, 3:add building, 4: elevation,
+										//5:select action on the site
+	var selectedSite; 					//currently selected site (right click), in order to be handled
+	var selectedBuilding				//currently selected building (right click), in order to change the height
+	var siteIcon = L.icon({
+		iconUrl: 'site.png',
+		//shadowUrl: 'site.png',
+
+		iconSize:     [38, 50], // size of the icon
+		//shadowSize:   [50, 64], // size of the shadow
+		//iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
+		//shadowAnchor: [4, 62],  // the same for the shadow
+		//popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+	});
+	
+	var triangle = L.icon({
+		iconUrl: 'triangle.png',
+		//shadowUrl: 'site.png',
+
+		iconSize:     [38, 50], // size of the icon
+		//shadowSize:   [50, 64], // size of the shadow
+		//iconAnchor:   [22, 94], // point of the icon which will correspond to marker's location
+		//shadowAnchor: [4, 62],  // the same for the shadow
+		//popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
+	});
+	//local variables
+	var a;
+	var angleindex;
+	
+	var size;
+	var xx,yy;
+	var chaine="";
+	
+	var omni;
+	var i,j;
+	var cst1;
+	var cst2;
+	var hpoint;
+	var delta;
+	var alpha;
+	var angle,ti,az;
+	var p1,p2;
+	var idist, jdist;
+	var jstep; 			
+	var istep;
+	var sobstacle;
+	var s;
+	var iobstacle;			
+	var jobstacle;
+	var hmax;	
+	var dobs;
+	var hvmax;
+	var hant;
+	var point;
+	var d1;
+	var d2;
+	var R1;
+	var v;
+	var LKE;
+	var LFS;
+	var L;
+	var bin = [];	
+
+	var ant;
+ 	var colors=[];
+	var start;
+		
+	//action after the selection of the south-east corner of the covering area
+	function placeCorner(location) {
+		
+		document.getElementById('message').value = "Scan in progress !!!";
+		net.areaWidth =parseInt(document.getElementById('areaWidth').value);
+		net.areaHeight =parseInt(document.getElementById('areaHeight').value);
+		net.binSize =parseInt(document.getElementById('binSize').value);
+		document.getElementById('areaWidth').disabled='disabled';
+		document.getElementById('areaHeight').disabled='disabled';
+		document.getElementById('binSize').disabled='disabled';
+
+		net.southCorner=location;
+		
+		var p3=L.latLng(net.southCorner.lat+0.001, net.southCorner.lng);
+		var distance=L.GeometryUtil.length([location, p3]);
+		//computaion of the latitude  diff equivalent to binSize meters
+		latBin=0.001*net.binSize/distance;
+		
+		p3=L.latLng(net.southCorner.lat, net.southCorner.lng+0.001);
+		var distance=L.GeometryUtil.length([location, p3]);
+		//computaion of the longitude  diff equivalent to binSize meters
+		lngBin=0.001*net.binSize/distance;
+		
+
+		
+		//initialization of the relief, elevation,	and architecture tables
+		for(i=0;i<net.areaHeight ;i++){
+			relief.push([]);
+			for(j=0;j<net.areaWidth;j++) relief[i].push(0);
+		}
+		for(i=0;i<net.areaHeight ;i++){
+			elevation.push([]);
+			for(j=0;j<net.areaWidth;j++) elevation[i].push(0);
+		}
+		for(i=0;i<net.areaHeight ;i++){
+			architecture.push([]);
+			for(j=0;j<net.areaWidth ;j++) architecture[i].push(0);
+		}
+		// Display the deployment area	
+		var zonecontour = L.polygon([
+				[net.southCorner.lat, net.southCorner.lng],
+				[net.southCorner.lat+latBin*net.areaHeight , net.southCorner.lng],
+				[net.southCorner.lat+latBin*net.areaHeight , net.southCorner.lng+lngBin*net.areaWidth ],
+				[net.southCorner.lat, net.southCorner.lng+lngBin*net.areaWidth ]
+			]).addTo(mymap);
+		scanArea();
+		scanBuildings();
+	}
+	function activate(){
+	   document.getElementById('btn').disabled = '';
+	}
+	
+	
+	var line=0;
+	
+	//scanArea function extract the elevation data of all the points in the deployment area (with a step=net.binSize meters)
+	function scanArea() {
+		
+		mymap.addLayer(group1);
+
+			for(col=0;col<net.areaWidth;col++) //for each column in the current block
+			{
+				var location= L.latLng(net.southCorner.lat+line*latBin, net.southCorner.lng+col*lngBin);
+				//relief[bl+line][bc+col]=getElevation2(location);
+				var a = colorPicker.getColor(location);
+				var h = NaN;
+				if (a !== null) {
+					//var h = (a[0] << 16) + (a[1] << 8) + a[2];
+					//h = h === 0x800000 ? NaN : (h > 0x800000 ? h - 0x1000000 : h) / 100;
+					h=-10000 + ((a[0] * 256 * 256 + a[1] * 256 + a[2]) * 0.1)
+				}
+				else{
+					alert("relief data is not extracted");
+				}
+				relief[line][col]=h;
+				//display the scanned bin
+				var zonecontour = L.polygon([
+				[location.lat, location.lng],
+				[location.lat+latBin, location.lng],
+				[location.lat+latBin, location.lng+lngBin],
+				[location.lat, location.lng+lngBin]
+				]).addTo(group1);
+			}
+			line++;
+			
+		if(line<net.areaHeight)
+			setTimeout("scanArea()",0.5);
+		else{
+		//End of deployment area scanning
+		
+			document.getElementById('propag').disabled = '';
+			document.getElementById('site').disabled = '';
+			document.getElementById('batiment').disabled = '';
+			document.getElementById('saveBat').disabled = '';
+			document.getElementById('loadBat').disabled = '';
+			
+			document.getElementById('elevation').disabled = '';
+			mymap.removeLayer(group1);
+			
+			
+
+			document.getElementById('message').value = "Select an action !";
+			return;
+		}
+		
+	}
+
+	var markerantenna=[];									//the display of the antennas, not yet implemented
+	var markersite=[];										//the map's polygons representing the sites. The order of the markers 
+															//is the same as in the net.sites list. If a site is removed,
+															//the marker in the same position should be removed
+	
+															
+	function placeSiteConstructor(name, location) {
+		site=new Site(name,location);
+		var mark= new L.marker([location.lat, location.lng],{icon: siteIcon});
+		mark.bindTooltip(name);
+		mark.site=site;
+		mark.on('click',function(){
+			framesite.style.visibility="visible";
+			selectedSite=this.site;
+			modeclick=5;
+			document.getElementById('message').value = "Add or remove an antenna, or list the net.antennas !";
+			//alert(this.site.name);
+		});
+		mark.addTo(mymap);
+		markersite.push(mark);
+		net.sites.push(site);
+		net.nbsites++;
+
+		/*var line = L.polygon([
+					[location.lat, location.lng],
+					[location.lat+1, location.lng]
+					],{
+						pixelSize: arrowSize,
+						fillOpacity: 1,
+						color : 'red'}).addTo(elements);
+		line.addTo(mymap);*/
+		document.getElementById('message').value = "Select an action !";
+	}
+	
+	function listantennas(){
+		for(i=0;i<selectedSite.antennas.length;i++)
+		{
+			alert(selectedSite.antennas[i].name);
+		}
+		document.getElementById('message').value = "Select an action !";
+		frameantenna.style.visibility='hidden';
+		framesite.style.visibility='hidden';
+		modeclick=2;
+	}
+	function addAntenna(){
+		modeclick=6;
+		document.getElementById('message').value = "Set the antenna's parameters!";
+
+		frameantenna.style.visibility="visible";
+		document.getElementById('omni').checked=true;
+		
+		document.getElementById('propag').disable='disabled';
+		document.getElementById('cartepower').disabled='disabled';
+		document.getElementById('carteinterference').disabled='disabled';
+		document.getElementById('cartehandover').disabled='disabled';
+		document.getElementById('carteCell').disabled='disabled';
+		document.getElementById('carteresidence').disabled='disabled';
+		
+	}
+
+	function agreeAddAntenna(){
+		antenna=new Antenna(selectedSite.location);
+		antenna.techno=document.getElementById('techno').value;
+		antenna.spectrum=parseInt(document.getElementById('frequencySpectrum').value);
+		antenna.bandwidth=parseInt(document.getElementById('bandwidth').value);
+		antenna.height=parseInt(document.getElementById('height').value);
+		antenna.name="ant_"+antenna.techno+"_"+antenna.spectrum+"_";
+		if( typeof(type) == 'undefined' ){
+			if(document.getElementById('omni').checked)
+				omni = true;
+			else omni=false;
+			antenna.omni=omni;
+			antenna.tilt = document.getElementById('tilt').value;
+			if (antenna.tilt != null) {
+					tilt=parseInt(antenna.tilt)*Math.PI/180;
+					antenna.tilt=tilt;
+				}
+			else antenna.tilt=0;
+			if(!omni){
+				var az = document.getElementById('azimut').value;
+				if (az != null) {
+					azimut=parseInt(az)*Math.PI/180;
+					antenna.azimut=azimut;
+				}
+				else antenna.azimut=0;
+			}
+			objpower=document.getElementById('power');
+			antenna.power = parseInt(objpower.value);
+		}
+		//it is a restored antenna from stored data 
+		else {
+			if(type=="omni"){
+				omni=true;
+				antenna.omni=omni;
+				antenna.azimut=-1;
+				antenna.tilt=tilt;
+				antenna.power=pow;
+			}
+			else{
+				omni=false;
+				antenna.omni=omni;
+				antenna.azimut=azimut;
+				antenna.tilt=tilt;
+				antenna.power=pow;
+			}
+		}
+		if(omni) antenna.name=antenna.name+"_"+"omni"+"_ti="+document.getElementById('tilt').value;
+		else antenna.name=antenna.name+"_"+"sect"+"_az="+document.getElementById('azimut').value+"_tilt="+document.getElementById('tilt').value;
+		net.antennas.push(antenna);
+		net.nbantennas++;
+		selectedSite.antennas.push(antenna);
+		document.getElementById('message').value = "Select an action !";
+		frameantenna.style.visibility='hidden';
+		framesite.style.visibility='hidden';
+		modeclick=2;
+	}
+	function cancelAddAntenna(){
+		document.getElementById('message').value = "Select an action !";
+		frameantenna.style.visibility='hidden';
+		framesite.style.visibility='hidden';
+		modeclick=2;
+	}
+	function removeAntenna(){
+		name=prompt("Give the name of the antenna to remove :","");
+		for(i=0;i<selectedSite.antennas.length;i++)
+		{
+			if(selectedSite.antennas[i].name==name) {
+				antennaId=selectedSite.antennas[i].id;
+				selectedSite.antennas.splice(i,1);
+				for(a=0;a<net.nbantennas;a++)
+				{
+					if(net.antennas[a].id==antennaId) {
+						net.antennas.splice(a,1);
+						net.nbantennas--;
+					}
+				}	
+				break;
+			}
+		}
+		document.getElementById('message').value = "Select an action !";
+		framesite.style.visibility='hidden';
+		modeclick=2;
+	}
+	function cancelSite(){
+		modeclick=2;
+		document.getElementById('message').value = "Select an action !";
+		frameantenna.style.visibility='hidden';
+		framesite.style.visibility='hidden';
+		modeclick=2;
+		
+	}
+	//action when the radio propagation computing is required : click on the button
+	function propagation() {
+		//compute the elevation of the net.buildings
+		//for each center of a bin
+		for(i=0;i<net.areaHeight ;i++)
+			for(j=0;j<net.areaWidth ;j++){
+				var lat=net.southCorner.lat+i*latBin+latBin/2;
+				var lng=net.southCorner.lng+j*lngBin+lngBin/2;
+				var p = L.latLng(lat, lng);
+				
+				for(b=0;b<net.buildings.length;b++){
+					points=markerbuilding[b].getBounds();
+					
+					if(markerbuilding[b].getBounds().contains(p)){
+						architecture[i][j]=net.buildings[b].height;
+						break;
+					}
+				}
+			}
+
+
+		//avoid re-click on the button during the computation
+		document.getElementById('propag').disable='disabled';
+		//normalize the elevation data
+		if(firstpropag==true)
+		{
+			firstpropag=false;
+			min=10000;
+			for(i=0;i<net.areaHeight ;i++)
+				for(j=0;j<net.areaWidth ;j++) 
+					if(relief[i][j]<min) min=relief[i][j];			
+			for(i=0;i<net.areaHeight ;i++)
+				for(j=0;j<net.areaWidth ;j++) 
+					relief[i][j]=relief[i][j]-min;
+		}
+		for(i=0;i<net.areaHeight ;i++){
+			for(j=0;j<net.areaWidth ;j++){
+				elevation[i][j]=relief[i][j]+architecture[i][j];
+			}
+		}
+		powerMatrix=[];
+		for(a=0;a<net.nbantennas;a++){
+			powerMatrix.push([]);
+			for(i=0;i<net.areaHeight ;i++){
+				powerMatrix[a].push([]);
+				for(j=0;j<net.areaWidth ;j++){
+					powerMatrix[a][i].push([]);
+					powerMatrix[a][i][j]=-1000;
+				}
+			}
+		}
+		rep=document.getElementById('methode').value;
+		if(document.getElementById('methode').value=="1") propagationSKE();
+		else if(document.getElementById('methode').value=="2") propagationBull();
+		else if(document.getElementById('methode').value=="3") propagationEpstein();
+		else if(document.getElementById('methode').value=="8") propagationCostHata();
+		else if(document.getElementById('methode').value=="9") propagationWalfisch();
+		document.getElementById('cartepower').disabled='';
+		document.getElementById('carteinterference').disabled='';
+		document.getElementById('cartehandover').disabled='';
+		document.getElementById('carteCell').disabled='';
+		document.getElementById('carteresidence').disabled='';
+	}
+	//function returning an RGB color according to a given value p
+	function GetColor(p) {
+		
+		/*index=parseInt((50-p)*520/(50-net.sensitivityThreshold));
+		r=colors[index][0];
+		v=colors[index][1];
+		b=colors[index][2];*/
+		if(p>0) {
+			r=251;v=0;b=0;
+		}
+		else if(p>-50) {r=250;v=123;b=0;}
+		else if(p>-70) {r=251;v=220;b=0;}
+		else if(p>-80) {r=244;v=251;b=0;}
+		else if(p>-90) {r=188;v=251;b=0;}
+		else if(p>-100) {r=1;v=250;b=57;}
+		else if(p>-105) {r=0;v=251;b=201;}
+		else if(p>-110) {r=0;v=207;b=251;}
+		else if(p>-115) {r=1;v=69;b=250;}
+		else {r=51;v=1;b=250;}
+		
+		if(r<16)strred="0"+r.toString(16); else strred=r.toString(16);
+		if(b<16)strblue="0"+b.toString(16); else strblue=b.toString(16);
+		if(v<16)strgreen="0"+v.toString(16); else strgreen=v.toString(16);
+		return "#"+strred+strgreen+strblue;
+	}
+	
+	
+	function propagationCostHata(){
+		var p1= L.latLng(net.southCorner.lat, net.southCorner.lng);
+		var p2= L.latLng(net.southCorner.lat+latBin, net.southCorner.lng);
+		var binHeight=L.GeometryUtil.length([p1, p2]);
+		p1= L.latLng(net.southCorner.lat, net.southCorner.lng);
+		p2= L.latLng(net.southCorner.lat, net.southCorner.lng+lngBin);
+		var binWidth=L.GeometryUtil.length([p1, p2]);
+		
+		net.sensitivityThreshold=parseInt(document.getElementById('sensitivityThreshold').value);
+		
+		cst1=1.56*Math.log10(frequencySpectrum)+0.8;
+		cst2=46.3 + 33.9*Math.log10(frequencySpectrum);
+		
+		for(a=0;a<net.nbantennas;a++){
+			frequencySpectrum=net.antennas[a].spectrum;
+			antennaLocation=L.latLng([net.antennas[a].location.lat,net.antennas[a].location.lng]);
+			point=L.latLng(antennaLocation.lat,antennaLocation.lng);
+			tilt=net.antennas[a].tilt;
+			tilt=180*tilt/Math.PI;
+			if(net.antennas[a].omni==false){
+				azimut=net.antennas[a].azimut;
+				azimut=180*azimut/Math.PI;
+			}
+			iant=Math.floor((antennaLocation.lat-net.southCorner.lat)/latBin);
+			jant=Math.floor((antennaLocation.lng-net.southCorner.lng)/lngBin);
+			hant=elevation[iant][jant]+net.antennas[a].height;
+			if(-200<-iant) iinf=-iant;else iinf=-200;
+			if(-200<-jant) jinf=-jant;else jinf=-200;
+			if(200>net.areaHeight -iant) isup=net.areaHeight -iant;else isup=200;
+			if(200>net.areaWidth -jant) jsup=net.areaWidth -jant;else jsup=200;
+			
+			for(jdist=jinf;jdist<=jsup;jdist++)
+			for(idist=iinf;idist<=isup;idist++)
+			{
+				ipoint=iant+idist;					//coordonnées en maille d'un point de reception	
+				jpoint=jant+jdist;	
+				if(ipoint<0 || jpoint<0 || ipoint >= net.areaHeight  || jpoint>=net.areaWidth ) continue;
+				point.lat=antennaLocation.lat+idist*latBin
+				point.lng=antennaLocation.lng+jdist*lngBin;
+				d=L.GeometryUtil.length([antennaLocation, point]);
+				if(idist==0 && jdist==0) { 	//si c'est la position de l'antenna alors ignorer
+					Loss=0;
+				}
+				else{
+					
+					hpoint=elevation[ipoint][jpoint]+1.5;
+					if(CCost==3) ahr=3.2*(Math.log10(11.75*hpoint))*(Math.log10(11.75*hpoint))-4.97;
+					else ahr=(1.1*Math.log10(frequencySpectrum)-0.7)*hpoint-cst1;
+					
+					Loss=cst2-13.82*Math.log10(hant); 
+					Loss=Loss-ahr+(44.9-6.55*Math.log10(hant))*Math.log10(d/1000.0)+CCost;
+					
+					angle=180*Math.atan(Math.abs(hant-hpoint)/d)/Math.PI;
+					
+					angle=Math.abs(tilt-angle);
+					
+					angleindex=Math.floor(angle/5);
+					Loss=Loss+ CCost-VertRadiationPattern[angleindex];
+					
+					if(net.antennas[a].omni==false){
+						if(idist==0 && jdist>0) angle=90;
+						else if(idist==0 && jdist<0) angle=270;
+						else {
+							angle=180*Math.atan(jdist/idist)/Math.PI;
+							if(idist<0)
+								angle=angle+180;
+							if(angle<0) angle=angle+360;
+						}
+						angle=Math.abs(angle-azimut);
+						angleindex=Math.floor(angle/5);
+						Loss=Loss-HorzRadiationPattern[angleindex];
+					}
+				}
+				powerMatrix[a][ipoint][jpoint]=net.antennas[a].power-Loss;
+			}
+		}
+		document.getElementById('cartepower').enabled='';
+	}
+	
+	//Single Knife Edge propgation model
+	function propagationSKE() {
+		
+		//computation of the bin dimentions (binSize x binSize meters)
+		var p1= L.latLng(net.southCorner.lat, net.southCorner.lng);
+		var p2= L.latLng(net.southCorner.lat+latBin, net.southCorner.lng);
+		var binHeight=L.GeometryUtil.length([p1, p2]);
+		p1= L.latLng(net.southCorner.lat, net.southCorner.lng);
+		p2= L.latLng(net.southCorner.lat, net.southCorner.lng+lngBin);
+		var binWidth=L.GeometryUtil.length([p1, p2]);
+
+		net.sensitivityThreshold=parseInt(document.getElementById('sensitivityThreshold').value);
+		//for each antenna
+		for(a=0;a<net.nbantennas;a++){
+			antennaLocation=L.latLng(net.antennas[a].location.lat,net.antennas[a].location.lng);
+			point=L.latLng(antennaLocation.lat, antennaLocation.lng);
+			//compute the coordinates of the bin where the antenna is located
+			iant=Math.floor((antennaLocation.lat-net.southCorner.lat)/latBin);
+			jant=Math.floor((antennaLocation.lng-net.southCorner.lng)/lngBin);
+			//antenna elevation corresponds to the relief+architecture+antenna height 
+			hant=elevation[iant][jant]+net.antennas[a].height;
+			
+			frequencySpectrum=net.antennas[a].spectrum;
+			//convert the antenna tilt to rad
+			tilt=net.antennas[a].tilt;
+			tilt=180*tilt/Math.PI;
+			if(net.antennas[a].omni==false){
+				//convert the antenna azimut to rad
+				azimut=net.antennas[a].azimut;
+				azimut=180*azimut/Math.PI;
+			}
+			//compute the area range for computing antenna received power 
+			if(-200<-iant) iinf=-iant;else iinf=-200;
+			if(-200<-jant) jinf=-jant;else jinf=-200;
+			if(200>net.areaHeight -iant) isup=net.areaHeight -iant-1;else isup=200;
+			if(200>net.areaWidth -jant) jsup=net.areaWidth -jant-1;else jsup=200;
+			//for each bin in the computation area arround the antenna
+			for(var jdist=jinf+1;jdist<=jsup-1;jdist++)
+			for(var idist=iinf+1;idist<=isup-1;idist++)
+			{
+				ipoint=iant+idist;					//point's coordinates (in nb bins) 
+				jpoint=jant+jdist;	
+				if(ipoint<0 || jpoint<0 || ipoint >= net.areaHeight  || jpoint>=net.areaWidth ) continue;
+				//compute the distance of the bin with the anetta
+				point.lat=antennaLocation.lat+idist*latBin
+				point.lng=antennaLocation.lng+jdist*lngBin;
+				//horizonal distance in (m) between the antenna and the reception point
+				d=L.GeometryUtil.length([antennaLocation, point]);
+				if(idist==0 && jdist==0) { 	//if it is the antenna position then consider the LOS formulla
+					Loss=32.4+20*Math.log10((Math.sqrt(binWidth*binWidth+binHeight*binHeight)/2)/frequencySpectrum)+20*Math.log10(frequencySpectrum);
+				}
+				else{
+					//extract the point elevation
+					hpoint=elevation[ipoint][jpoint];
+					delta=hant-hpoint-1.5; 	//difference between antenna and phone elevation
+					
+					alpha;					//horizontal angle in rad formed by EAST-Antenna-point
+					if(jdist!=0) {
+						alpha=Math.atan(idist/(jdist));
+						if(idist<0 && jdist<0)  alpha=alpha+3.14;
+						else if(idist>=0 && jdist<0) alpha=alpha+3.14;
+					}
+					else {
+						if(idist>0) alpha=1.5707;
+						else alpha=-1.5707;
+					}
+					
+					
+					jstep=Math.cos(alpha)/2.0; 		//sampling step of the horizonal line between the antenna and the reception point
+					istep=Math.sin(alpha)/2.0;		//istep²+jstep²=1
+					distStepBin=Math.sqrt(istep*istep*binHeight*binHeight+jstep*jstep*binWidth*binWidth);
+					//alert(distStepBin);
+					iobstacle=Math.floor(iant+istep);		//first obstacle		
+					jobstacle=Math.floor(jant+jstep);
+					
+					hmax=elevation[iobstacle][jobstacle];	//first obstacle elevation
+					dobs=distStepBin;
+					hvmax=hant-(dobs/d)*delta;
+					sobstacle=1;
+					for(s=1;Math.floor(s*Math.abs(istep))<=Math.abs(idist)&&Math.floor(s*Math.abs(jstep))<=Math.abs(jdist);s++){	//for each potential obstacle 
+						dobs=s*distStepBin;
+						hv=hant-(dobs/d)*delta;
+					
+						if(elevation[Math.floor(iant+s*istep)][Math.floor(jant+s*jstep)]-hv>hmax-hvmax){ 	//if it is realy an obstacle and it is the heighest
+							hmax=elevation[Math.floor(iant+s*istep)][Math.floor(jant+s*jstep)];	//then store the obstacle
+							hvmax=hv;
+							iobstacle=Math.floor(iant+s*istep);
+							jobstacle=Math.floor(jant+s*jstep);
+							sobstcale=s;
+						}
+					}
+					
+					
+					LKE=0.0;
+					hmax=hmax-hvmax;
+					//if the reception point is not in Light of Sight from the antenna
+					if(hmax>0){
+						//compute the mask effect attenuation
+						obstacle=L.latLng(antennaLocation.lat+sobstacle*istep*latBin, antennaLocation.lng+sobstacle*jstep*lngBin);
+						d1=L.GeometryUtil.length([antennaLocation, obstacle]);
+						d2=L.GeometryUtil.length([point,obstacle]);
+						R1=Math.sqrt(0.3*d1*d2/(d1+d2));
+						v=hmax*Math.sqrt(2)/R1;
+						if(v>1) LKE=-20*Math.log10(0.225/v);
+					}
+					if(LKE<0) LKE=0.0;
+					//compute the free space attenuation
+					LFS=32.4+20*Math.log10((d)/1000.0)+20*Math.log10(frequencySpectrum);
+					//compute the total power lost (in dB)
+					Loss=LKE+LFS
+					//compute the vertical angle between antenna tilt and direct line between antenna and point
+					angle=180*Math.atan(Math.abs(hant-hpoint)/d)/Math.PI;
+					
+					angle=tilt-angle;
+					if(angle<0)	angle=360+angle;
+					angleindex=Math.floor(angle/5);
+					//add the vertical radiation attenuation
+					Loss=Loss+ CCost -VertRadiationPattern[angleindex];
+					
+					if(net.antennas[a].omni==false){
+						if(idist==0 && jdist>0) angle=90;
+						else if(idist==0 && jdist<0) angle=270;
+						else {
+							angle=180*Math.atan(jdist/idist)/Math.PI;
+							if(idist<0)
+								angle=angle+180;
+							if(angle<0) angle=angle+360;
+						}
+						angle=Math.abs(angle-azimut);
+						angleindex=Math.floor(angle/5);
+						//add the horizonal radiation attenuation
+						Loss=Loss-HorzRadiationPattern[angleindex];
+					}
+				}
+				//store the received signal power
+				powerMatrix[a][ipoint][jpoint]=net.antennas[a].power-Loss;
+			}
+		}
+		document.getElementById('cartepower').enabled='';
+	}
+	function propagationBull() {
+		var p1= L.latLng(net.southCorner.lat, net.southCorner.lng);
+		var p2= L.latLng(net.southCorner.lat+latBin, net.southCorner.lng);
+		var binHeight=L.GeometryUtil.length([p1, p2]);
+		p1= L.latLng(net.southCorner.lat, net.southCorner.lng);
+		p2= L.latLng(net.southCorner.lat, net.southCorner.lng+lngBin);
+		var binWidth=L.GeometryUtil.length([p1, p2]);
+		
+		net.sensitivityThreshold=parseInt(document.getElementById('sensitivityThreshold').value);
+		frequencySpectrum=parseInt(document.getElementById('frequencySpectrum').value);
+			
+		for(a=0;a<net.nbantennas;a++){
+			antennaLocation=net.antennas[a].location;
+			point=L.latLng(antennaLocation.lat, antennaLocation.lng);
+			iant=Math.floor((antennaLocation.lat-net.southCorner.lat)/latBin);
+			jant=Math.floor((antennaLocation.lng-net.southCorner.lng)/lngBin);
+			hant=elevation[iant][jant]+net.antennas[a].height;
+			tilt=net.antennas[a].tilt;
+			if(-200<-iant) iinf=-iant;else iinf=-200;
+			if(-200<-jant) jinf=-jant;else jinf=-200;
+			if(200>net.areaHeight -iant) isup=net.areaHeight -iant;else isup=200;
+			if(200>net.areaWidth -jant) jsup=net.areaWidth -jant;else jsup=200;
+			for(var jdist=jinf;jdist<=jsup;jdist++)
+			for(var idist=iinf;idist<=isup;idist++)
+			{
+			
+				if(idist==0 && jdist==0) continue; 	//si c'est la position de l'antenna alors ignorer
+				ipoint=iant+idist;					//coordonnées en maille d'un point de reception	
+				jpoint=jant+jdist;
+				if(ipoint<0 || jpoint<0 || ipoint >= net.areaHeight  || jpoint>=net.areaWidth ) continue;
+				
+				point.lat=antennaLocation.lat+idist*latBin
+				point.lng=antennaLocation.lng+jdist*lngBin;
+				d=L.GeometryUtil.length([antennaLocation, point]);
+				
+				
+				hpoint=elevation[ipoint][jpoint];
+				delta=hant-hpoint-1.5;
+			
+				alpha;							//l'angle fait entre l'antenna, les latitudes et le point de reception
+				if(jdist!=0) {
+					alpha=Math.atan(idist/(jdist));
+					if(idist<0 && jdist<0)  alpha=alpha+3.14;
+					else if(idist>=0 && jdist<0) alpha=alpha+3.14;
+				}
+				else {
+					if(idist>0) alpha=1.5707;
+					else alpha=-1.5707;
+				}
+				jstep=Math.cos(alpha); 			//pas d'avance sur la line directe entre l'antenna et le point de reception
+				istep=Math.sin(alpha);
+				distStepBin=Math.sqrt(istep*istep*binHeight*binHeight+jstep*jstep*binWidth*binWidth);
+				stotal=Math.floor(d/distStepBin);
+				s1=0;
+				tangmax=0;
+				for(s=1;Math.abs(s*istep)<=Math.abs(idist) && Math.abs(s*jstep)<=Math.abs(jdist);s++){	//parcours des obstacle avec un pas istep, jstep
+					dobs=s*distStepBin;
+					hv=hant-(dobs/d)*delta;
+					hobs=elevation[Math.floor(iant+s*istep)][Math.floor(jant+s*jstep)]
+					if(hobs>hv && ((hobs-hant)/dobs)>tangmax){ 			//si c'est l'obstacle le plus haut 
+						tangmax=(hobs-hant)/dobs;
+						s1=s;
+					}
+				}
+			
+				s2=0;
+				tangmax=0;
+				for(s=1;Math.abs(s*istep)<Math.abs(idist);s++){	//parcours des obstacle avec un pas istep, jstep
+					dobs=s*distStepBin;
+					hv=hpoint+1.5-(dobs/d)*delta;
+					hobs=elevation[Math.floor(ipoint-s*istep)][Math.floor(jpoint-s*jstep)]
+					if(hobs>hv && ((hobs-hpoint)/dobs)>tangmax){ 			//si c'est l'obstacle le plus haut 
+						tangmax=(hobs-hpoint)/dobs;
+						s2=s;
+					}
+				}
+				var LBull=0.0;
+				sobs=0;
+				hobs=0;
+				if(s1==0 && s2>0) {sobs=stotal-s2;hobs=elevation[Math.floor(ipoint-s2*istep)][Math.floor(jpoint-s2*jstep)];}
+				if(s1>0 && s2==0) {sobs=s1;hobs=elevation[Math.floor(iant+s1*istep)][Math.floor(jant+s1*jstep)];}
+				if(s1>0 && s2>0){
+					delta1=(hant-elevation[Math.floor(iant+s1*istep)][Math.floor(jant+s1*jstep)]);
+					delta2=(hpoint+1.5-elevation[Math.floor(ipoint-s2*istep)][Math.floor(jpoint-s2*jstep)]);
+					d1=s1*distStepBin;
+					d2=s2*distStepBin;
+					s3=stotal-s2;
+					min=1000.0;
+					for(s=s1;s<=s3;s++){
+						dobs1=s*distStepBin;
+						dobs2=(stotal-s)*distStepBin;
+						if(Math.abs((hpoint+1.5-delta2*dobs2/d2)-(hant-delta1*dobs1/d1))<min){
+							min= Math.abs((hpoint+1.5-delta2*dobs2/d2)-(hant-delta1*dobs1/d1));
+							sobs=s;
+							hobs=hpoint+1.5-delta2*dobs2/d2;
+						}
+					}
+				}
+				if(s1==0 && s2==0) LBull=0.0;
+				else{
+					obstacle=new google.maps.LatLng(antennaLocation.lat+sobs*istep*latBin, antennaLocation.lng+sobs*jstep*lngBin);
+					d1=google.maps.geometry.spherical.computeDistanceBetween(antennaLocation,obstacle);
+					d2=google.maps.geometry.spherical.computeDistanceBetween(point,obstacle);
+					R1=Math.sqrt(0.3*d1*d2/(d1+d2));
+					hv=hant-(d1/(d1+d2))*delta;
+					v=(hobs-hv)*Math.sqrt(2)/R1;
+					if(v>1) LBull=-20*Math.log10(0.225/v);
+				}
+				if(LBull<0){
+					if(LBull<0) LBull=0.0;
+				}
+				LFS=32.4+20*Math.log10((d)/1000.0)+20*Math.log10(frequencySpectrum);
+			
+				L=LFS+LBull
+				angle=180*Math.atan(Math.abs(hant-hpoint)/d)/Math.PI;
+					
+				angle=tilt-angle;
+				if(angle<0)	angle=360+angle;
+				angleindex=Math.floor(angle/5);
+				L=L+ CCost-VertRadiationPattern[angleindex];
+				
+				if(net.antennas[a].omni==false){
+						if(idist==0 && jdist>0) angle=90;
+						else if(idist==0 && jdist<0) angle=270;
+						else {
+							angle=180*Math.atan(jdist/idist)/Math.PI;
+							if(idist<0)
+								angle=angle+180;
+							if(angle<0) angle=angle+360;
+						}
+						angle=Math.abs(angle-azimut);
+						angleindex=Math.floor(angle/5);
+						L=L-HorzRadiationPattern[angleindex];
+					}
+				
+				powerMatrix[a][ipoint][jpoint]=net.antennas[a].power-L;
+			}
+		}
+		document.getElementById('cartepower').enabled='';
+	}
+	function vider() {
+		while(bins.length){
+				bins.pop().remove();
+		}
+	}
+		
+	function batiment(){
+		document.getElementById('message').value="Place the first corner of the building";
+		modeclick=3;
+		
+		document.getElementById('cartepower').disabled='disabled';
+		document.getElementById('carteinterference').disabled='disabled';
+		document.getElementById('cartehandover').disabled='disabled';
+		document.getElementById('carteCell').disabled='disabled';
+		document.getElementById('carteresidence').disabled='disabled';
+		
+	}
+	function displayElevation(){
+		document.getElementById('message').value="click  on the point for which you want know the elevation";
+		modeclick=4;
+	}
+	var batiments=[];
+	var axes=[];
+	var hautsBat=[];
+	var coinsBat=[];
+	function placeBat(location){
+		coinsBat.push(location);
+	}
+	function placeBat2(location){
+		coinsBat.push(location);
+		bat = L.polygon(coinsBat,
+					{fillColor: 'grey',
+						fillOpacity: 1,
+						color : 'transparent'}).addTo(mymap);
+		batiments.push(bat);
+		bat.on('dblclick', function(event) {
+			rep=confirm("voulez vous supprimer le batiment");
+			if(rep==true) {
+							index=batiments.indexOf(this);
+				for(i=0;i<net.areaHeight ;i++){
+					for(j=0;j<net.areaWidth ;j++){
+						point=L.latLng(net.southCorner.lat+i*latBin, net.southCorner.lng+j*lngBin);
+						if(this.getBounds().contains(point))
+						{architecture[i][j]=0;}
+					}
+				}
+				batiments.splice(index, 1);
+				hautsBat.splice(index,1);
+				this.remove();
+			}
+		});
+		bat.on('contextmenu', function(event) {
+			index=batiments.indexOf(this);
+			rep=alert("Hauteur du batiment : "+hautsBat[index]+ " metres");
+		});
+		coinsBat=[];
+		
+		h=parseInt(prompt("Enter the height of the building in meters", "10"));
+
+		for(i=0;i<net.areaHeight ;i++){
+			for(j=0;j<net.areaWidth ;j++){
+				point=L.latLng(net.southCorner.lat+i*latBin, net.southCorner.lng+j*lngBin);
+				if(bat.getBounds().contains(point))
+				{
+					architecture[i][j]=h;
+				}
+			}
+		}
+		hautsBat.push(h);
+		document.getElementById('message').value="Select an action !";
+	}
+	function addSite(){
+		document.getElementById('message').value="Place the site ! or Escap to cancel !";
+		modeclick=1;
+		document.getElementById('propag').disable='disabled';
+		document.getElementById('cartepower').disabled='disabled';
+		document.getElementById('carteinterference').disabled='disabled';
+		document.getElementById('cartehandover').disabled='disabled';
+		document.getElementById('carteCell').disabled='disabled';
+		document.getElementById('carteresidence').disabled='disabled';
+		
+
+	}
+
+	/*function addAntennaConstructor(){
+		document.getElementById('message').value="Place the antenna ! or Escap to cancel !";
+		frameantenna.style.visibility="visible";
+		document.getElementById('omni').checked=true;
+		modeclick=1;
+		
+		document.getElementById('propag').disable='disabled';
+		document.getElementById('cartepower').disabled='disabled';
+		document.getElementById('carteinterference').disabled='disabled';
+		document.getElementById('cartehandover').disabled='disabled';
+		document.getElementById('carteCell').disabled='disabled';
+		document.getElementById('carteresidence').disabled='disabled';
+	}*/
+
+	
+	function carteCell(){
+		vider();
+		net.sensitivityThreshold=parseInt(document.getElementById('sensitivityThreshold').value);
+		net.southCornerlat=net.southCorner.lat;
+		net.southCornerlng=net.southCorner.lng;
+		var a=0;
+		for(i=0;i<net.areaHeight ;i++){
+			for(j=0;j<net.areaWidth ;j++){
+				max=-1000;
+				bestant=-1;
+				for(a=0;a<net.nbantennas;a++){
+					if(powerMatrix[a][i][j]>max) {max=powerMatrix[a][i][j];	bestant=a;}
+				}
+				if(max<net.sensitivityThreshold) continue;
+				plat=net.southCornerlat+i*latBin;
+				plng=net.southCornerlng+j*lngBin;
+				
+				r=(bestant*82)%213;
+				v=(bestant*17)%207;
+				b=(bestant*87)%107+107;
+				if(r<16)strred="0"+r.toString(16); else strred=r.toString(16);
+				if(b<16)strblue="0"+b.toString(16); else strblue=b.toString(16);
+				if(v<16)strgreen="0"+v.toString(16); else strgreen=v.toString(16);
+				couleur="#"+strred+strgreen+strblue;
+				
+				var bin = L.polygon([
+					[plat, plng],
+					[plat+latBin, plng],
+					[plat+latBin, plng+lngBin],
+					[plat, plng+lngBin]
+					],{fillColor: couleur,
+						fillOpacity: 1,
+						color : 'transparent'}).addTo(mymap);
+				bins.push(bin);
+			}
+		}
+	}
+	function choixenv(){
+		m=document.getElementById('methode').value;
+		if(m==8){
+			rep=confirm("Est un environnement urbain ?");
+			if(rep==true)
+				CCost=3;
+			else CCost=0;
+		}
+		document.getElementById('propag').disable='disabled';
+		document.getElementById('cartepower').disabled='disabled';
+		document.getElementById('carteinterference').disabled='disabled';
+		document.getElementById('cartehandover').disabled='disabled';
+		document.getElementById('carteCell').disabled='disabled';
+		document.getElementById('carteresidence').disabled='disabled';
+		
+	}
+	function choixcarto(){
+		rep=confirm("Transparent pour les zones hors net.sensitivityThresholds ?");
+		if(rep==true)
+			carto=true;
+		else carto=false;
+	}
+	function cartepower(){
+		vider();
+		net.sensitivityThreshold=parseInt(document.getElementById('sensitivityThreshold').value);
+		net.southCornerlat=net.southCorner.lat;
+		net.southCornerlng=net.southCorner.lng;
+		for(i=0;i<net.areaHeight ;i++){
+			for(j=0;j<net.areaWidth ;j++){
+				max=-1000;
+				for(var a=0;a<net.nbantennas;a++){
+					if(powerMatrix[a][i][j]>max) max=powerMatrix[a][i][j];
+				}
+				if(max<net.sensitivityThreshold) continue;
+				plat=net.southCornerlat+i*latBin;
+				plng=net.southCornerlng+j*lngBin;
+				couleur=GetColor(Math.floor(max));
+				var bin = L.polygon([
+					[plat, plng],
+					[plat+latBin, plng],
+					[plat+latBin, plng+lngBin],
+					[plat, plng+lngBin]
+					],{fillColor: couleur,
+						fillOpacity: 1,
+						weight: 0,
+						color : 'none'}).addTo(mymap);
+				bins.push(bin);
+			}
+		}
+	}
+	function carteinterference(){
+		vider();
+		net.sensitivityThreshold=parseInt(document.getElementById('sensitivityThreshold').value);
+		for(i=0;i<net.areaHeight ;i++){
+			for(j=0;j<net.areaWidth ;j++){
+				max=-1;
+				suminterf=Math.pow(10,-15);
+				for(var a=0;a<net.nbantennas;a++){
+					if(Math.pow(10,powerMatrix[a][i][j]/10.0)>max) {
+						if(max!=-1)	suminterf+=max;
+						max=Math.pow(10,powerMatrix[a][i][j]/10.0);
+					}
+					else suminterf+=Math.pow(10,powerMatrix[a][i][j]/10.0);
+				}
+				CIR=max/suminterf;
+				if(CIR>1.5) continue;
+				else if(CIR>1) {r=1;v=69;b=250;}
+				else if(CIR>0.5){r=1;v=250;b=57;}
+				else if(CIR>0.33){r=188;v=251;b=0;}
+				else if(CIR>0.25){r=244;v=251;b=0;}
+				else if(CIR>0.20){r=251;v=220;b=0;}
+				else {r=250;v=123;b=0;}
+		
+				if(r<16)strred="0"+r.toString(16); else strred=r.toString(16);
+				if(b<16)strblue="0"+b.toString(16); else strblue=b.toString(16);
+				if(v<16)strgreen="0"+v.toString(16); else strgreen=v.toString(16);
+				couleur="#"+strred+strgreen+strblue;
+				
+				plat=net.southCorner.lat+i*latBin;
+				plng=net.southCorner.lng+j*lngBin;
+				
+				var bin = L.polygon([
+					[plat, plng],
+					[plat+latBin, plng],
+					[plat+latBin, plng+lngBin],
+					[plat, plng+lngBin]
+					],{fillColor: couleur,
+						fillOpacity: 1,
+						color : 'transparent'}).addTo(mymap);
+				bins.push(bin);
+			}
+		}
+	}
+	
+	function getElevation(location) {
+          var a = colorPicker.getColor(location);
+		  var h = NaN;
+				if (a !== null) {
+					//var h = (a[0] << 16) + (a[1] << 8) + a[2];
+					//h = h === 0x800000 ? NaN : (h > 0x800000 ? h - 0x1000000 : h) / 100;
+					h=-10000 + ((a[0] * 256 * 256 + a[1] * 256 + a[2]) * 0.1)
+					alert("Elevation is " + h) ;
+				}
+				
+      }
+     function getElevation2(location) {
+          // make API request
+          var query =
+          'https://api.mapbox.com/v4/mapbox.mapbox-terrain-v2/tilequery/' +
+          location.lng +
+          ',' +
+          location.lat +
+          '.json?layers=contour&limit=50&access_token=' +
+          'pk.eyJ1IjoiaG1hYmVkIiwiYSI6ImNrbzhtdHZ3MDBtaGkybm1xbGc5OGR1dTkifQ.V0tUwrR-NO6M6dXLKXycAw';
+
+          $.ajax({
+          	method: 'GET',
+          	url: query,
+	  	success: function(data) { 
+            		// Get all the returned features
+          		var allFeatures = data.features;
+          		// Create an empty array to add elevation data to
+          		var elevations = [];
+          		// For each returned feature, add elevation data to the elevations array
+          		for (i = 0; i < allFeatures.length; i++) {
+            		elevations.push(allFeatures[i].properties.ele);
+          		}
+          		// In the elevations array, find the largest value
+          		var highestElevation = Math.max(...elevations);
+          		return highestElevation ;
+           	}
+          });
+      }
+	function onMapClick(e) {
+		//alert("You clicked the map at " + e.latlng);
+		if(modeclick==0) {modeclick=2;placeCorner(e.latlng);}
+		else if(modeclick==1) {modeclick=2;name=prompt("Give a name for the site","");placeSiteConstructor(name,e.latlng);}
+		else if(modeclick==3) {modeclick=2;placeBat(e.latlng);}
+		else if(modeclick==4) {modeclick=2;getElevation(e.latlng);document.getElementById('message').value = "Select an action!";}
+	}
+	function onMapDbClick(e) {
+		alert("You dble clicked the map at " + e.latlng);
+		if(modeclick==3) {modeclick=2;placeBat2(e.latlng);}
+	}
+	
+	
+
+function saveNet(){
+	//ask for the network's name
+	net.name=prompt("give the name of the network:","network.json");
+	//record the network data as json objet
+	netJsonObj = JSON.stringify(net);
+
+	
+	//console.log(netJsonObj);
+	//store the data into the browser's local storage
+	
+	window.localStorage.setItem(net.name, netJsonObj);
+}
+
+function loadNet(){
+	
+	modeclick=2;
+	net.name=prompt("give the name of the network:","network.json");
+	document.getElementById('message').value = "Network data will be extracted!";
+	net = JSON.parse(window.localStorage.getItem(net.name));
+	//console.log(JSON.parse(newObject));
+	console.log(net);
+	//scan the area from the southcorner point : relief
+	var p1=L.latLng(net.southCorner.lat, net.southCorner.lng);
+	var p2=L.latLng(net.southCorner.lat+0.001, net.southCorner.lng);
+	var distance=L.GeometryUtil.length([p1,p2]);
+	//computaion of the latitude  diff equivalent to 5m
+	latBin=0.001*5/distance;
+		
+	p2=L.latLng(net.southCorner.lat, net.southCorner.lng+0.001);
+	var distance=L.GeometryUtil.length([p1, p2]);
+	//computaion of the longitude  diff equivalent to 5m
+	lngBin=0.001*5/distance;
+	for(i=0;i<net.areaHeight ;i++){
+		relief.push([]);
+		for(j=0;j<net.areaWidth;j++) relief[i].push(0);
+	}
+	for(i=0;i<net.areaHeight ;i++){
+		elevation.push([]);
+		for(j=0;j<net.areaWidth;j++) elevation[i].push(0);
+	}
+	for(i=0;i<net.areaHeight ;i++){
+		architecture.push([]);
+		for(j=0;j<net.areaWidth ;j++) architecture[i].push(0);
+	}
+	document.getElementById('message').value = "Scan in progress !!!";
+	// Display the deployment area	
+	var zonecontour = L.polygon([
+				[net.southCorner.lat, net.southCorner.lng],
+				[net.southCorner.lat+latBin*net.areaHeight , net.southCorner.lng],
+				[net.southCorner.lat+latBin*net.areaHeight , net.southCorner.lng+lngBin*net.areaWidth ],
+				[net.southCorner.lat, net.southCorner.lng+lngBin*net.areaWidth ]
+			]).addTo(mymap);
+	scanArea();
+	loadBuildings();
+
+	//display the network data : sites and antennas
+	for(i=0;i<net.nbsites;i++)
+	{
+		var circle= new L.marker([net.sites[i].location.lat, net.sites[i].location.lng],{icon: siteIcon});
+		circle.bindTooltip(net.sites[i].name);
+		circle.site=net.sites[i];
+		circle.on('click',function(){
+			framesite.style.visibility="visible";
+			selectedSite=this.site;
+			modeclick=5;
+			document.getElementById('message').value = "Add or remove an antenna, or list the net.antennas !";
+			//alert(this.site.name);
+		});
+		circle.addTo(mymap);
+		markersite.push(circle);
+	}
+}
+
+</script>
+
+</head>
+  <body>
+	<div id="conteneur">
+		<div id="header">
+			<div>
+				<button type="button" id="loadBat" value="Load buildings" onclick="loadNet()" ><img src="loadNet.png"> </button>
+				<button type="button" id="saveBat" value="Record buildings" onclick="saveNet()" disabled='disabled'><img src="saveNet.png"> </button>
+				<button type="button" title="run the propagation model" id="propag" value="Propagation" onclick="propagation()" disabled='disabled'> <img src="propag.png"> </button>
+				<button type="button" title="reset the propagation computation" id="remove" value="Remove" onclick="vider()"> <img src="erase.png"> </button>
+				<!--<button type="button" id="routes" value="Extraire les routes de la zone (0,0)" onclick="routes()" disabled='disabled'><img src="routes.png"> </button>-->
+				<!--<button type="button" id="completer" value="Compléter les routes" onclick="completer()" disabled='disabled'><img src="routes+.png"> </button> -->
+				<!--<button type="button" id="axes" value="Ajouter un axe routier" onclick="addaxe()" disabled='disabled'><iaddSitemg src="routes.png"> </button>-->
+				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="bat.png"> </button>
+				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="pylone.png"> </button>
+				<!--<button type="button" title="add new antenna" id="antenna" value="Add an antenna" onclick="addAntennaConstructor()" disabled='disabled'><img src="antenna.png"> </button>-->
+				
+				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="store.png"> </button>
+				 
+				<button type="button" id="elevation" value="Elevation computing" onclick="displayElevation()" disabled='disabled'><img src="elevation.png"> </button>
+				<button type="button" id="move" value="Move simulation" onclick="move()" disabled='disabled'><img src="path.png"> </button>
+				 <!--<input type="file" id="fileinput" />-->
+			</div>
+		</div>
+		<div id="center">
+			<div id="sidebar">
+				<div><label  for="sensitivityThreshold">Radio sensitivity (Db) : </label>
+				<input type="number" id="sensitivityThreshold" name="sensitivityThreshold" value=-140 style="width: 30%;"></div>
+				
+				<div><label  for="lowQualityThreshold">Low Quality (Db) : </label>
+				<input type="number" id="lowQualityThreshold" name="lowQualityThreshold" value=-120 style="width: 30%;"></div>
+				
+				<div><label  for="highQualityThreshold">High quality (Db) : </label>
+				<input type="number" id="highQualityThreshold" name="highQualityThreshold" value=-100 style="width: 30%;"></div>
+				
+				<div><label  for="expositionThreshold">Exposition threshold (Db) : </label>
+				<input type="number" id="expositionThreshold" name="expositionThreshold" value=-115 style="width: 30%;"></div>
+				
+				<hr class="solid">
+
+				<div> <label for="binSize">Bin size (m): </label>
+				<input type="number" id="binSize" name="binSize" value=5 style="width: 30%;"></div>
+
+				<div> <label for="areaHeight">Area Height (bins)        : </label>
+				<input type="number" id="areaHeight" name="areaHeight" value=100 style="width: 30%;"></div>
+				
+				<div> <label for="areaWidth">Area Width (bins): </label>
+				<input type="number" id="areaWidth" name="areaWidth" value=100 style="width: 30%;"></div>
+				
+				<hr class="solid">
+				
+				<div><label id= "labelmodele">Propagation model: </label></div>
+				<select name="Combobox1" size="1" id="methode" style="width: 98%;" onchange="choixenv()">
+					<option selected value="1">Single Knife Edge (rural)</option>
+					<option value="2">Bullington (rural)</option>
+					<option value="3">Epstein Method</option>
+					<option value="4">Deygout (rural)</option>
+					<option value="5">Causebrook</option>
+					<option value="6">Okumura</option>
+					<option value="7">Okumura-Hata</option>
+					<option value="8">COST231-Hata (rural,urban)</option>
+					<option value="9">Walfisch-Ikegami(urban)</option>
+					<option value="10">Stanford University Interim</option>
+				</select>
+				
+				<hr class="solid">
+
+				<div> <input type="button" id="cartepower" value="Cartography of power" onclick="cartepower()" disabled='disabled' style="width: 98%;"/></div>
+				<div> <input type="button" id="carteinterference" value="Cartography of C/I" onclick="carteinterference()" disabled='disabled' style="width: 98%;"/></div>
+				<div> <input type="button" id="cartehandover" value="Cartography of handover" onclick="cartehandover()" disabled='disabled' style="width: 98%;"/></div>
+				<div> <input type="button" id="carteCell" value="Cartography of Cells" onclick="carteCell()" disabled='disabled' style="width: 98%;"/></div>
+				<div> <input type="button" id="carteresidence" value="Residance time" onclick="carteresidence()" disabled='disabled' style="width: 98%;"/></div>
+				
+				
+				<div id="framesite">
+					<input type="button" id="listantennas"  value="List of antennas" onclick="listantennas()" style="width: 48%;"/>
+					<input type="button" id="addantenna"    value="Add antenna " onclick="addAntenna()" style="width: 48%;"/>
+					<input type="button" id="removeantenna" value="Remove antenna" onclick="removeAntenna()" style="width: 48%;"/>
+					<input type="button" id="cancelsite"    value="Cancel" onclick="cancelSite()" style="width: 48%;"/>
+				</div>
+				<div id="frameantenna">
+						<div><label id="labeltech">Radio technogy: </label>
+						<select name="Combobox1" size="1" id="techno" style="width: 30%;">
+							<option selected value="GSM">GSM</option>
+							<option value="UMTS">UMTS</option>
+							<option value="LTE">LTE</option>
+							<option value="LTE-A">LTE-A</option>
+							<option value="TDF">TDF</option>
+							<option value="HSDPA">HSDPA</option>
+							<option value="WiMAX">WiMAX</option>
+							<option value="5G-NR">5G-NR</option>
+						</select></div>
+						<div><label for="frequencySpectrum">Spectrum(Mhz) : </label>
+						<input type="number" id="frequencySpectrum" name="frequencySpectrum" value="1800" align="right" style="width: 30%;"></div>
+						<div><label for="bandwidth">Band width(Mhz) : </label>
+						<input type="number" id="bandwidth" name="bandwidth" value="5000" align="right" style="width: 30%;"></div>
+						<div><label for="antennamodel">Antenna Model : </label><input type="file" id="model" /></div>
+						<div><label for="height">Height(m) : </label>
+							<input type="number" id="height" name="height" value="10" align="right" style="width: 30%;"></div>
+						<label id="labomni">Omni : </label>
+						<input type="radio" name="omni" id="omni" value="omni" />
+						<label id="labsect">Directional : </label>
+						<input type="radio" name="omni" id="sect" value="sectorial" />
+						<div><label id="labelpower">PIRE: </label><input type="number" id="power" name="power" value="5" style="width: 30%;"></div>
+						<div><label id="labeltilt">Tilt : </label><input type="number" id="tilt" name="tilt" value="30" style="width: 30%;"></div>
+						<div><label id="labelazimut">Azimut : </label><input type="number" id="azimut" name="azimut" value="0" style="width: 30%;"></div>
+						<div> 
+							<input type="button" id="agreeaddantenna" value="Confirm" onclick="agreeAddAntenna()" style="width: 48%;" />
+							<input type="button" id="canceladdantenna" value="Cancel" onclick="cancelAddAntenna()" style="width: 48%;"/>
+						</div>
+				
+						<!--<div><label id="freq1">Fréquence 1 : </label></div>
+						<div> <input type="number" id="frequency1" name="frequency1" style="width: 98%;"></div>
+						<div><label id="freq1">Fréquence 2 : </label></div>
+						<div> <input type="number" id="frequency2" name="frequency2" style="width: 98%;"></div>
+						<div><label id="freq1">Fréquence 3 : </label></div>
+						<div> <input type="number" id="frequency3" name="frequency3" style="width: 98%;"></div>
+						<div><label id="freq1">Fréquence 4 : </label></div>
+						<div> <input type="number" id="frequency4" name="frequency4" style="width: 98%;"></div> -->
+				</div>
+			</div>
+			<div id="contenu">				
+				<div id="mapid"></div>
+			</div>
+		</div>
+		<div id="footer">
+			<div> <input type="text" style="width:800px;" id="message" value="Select the south-west corner the deployment area or load network data!" readonly> </div>
+		</div>
+	</div>
+  </body>
+
+
+  <script> 
+
+function buildOverpassApiUrl() {
+		
+		s=net.southCorner.lat;
+		w=net.southCorner.lng;
+		n=net.southCorner.lat+latBin*net.areaHeight;
+		e=net.southCorner.lng+lngBin*net.areaWidth;
+        var bounds = s + ',' + w + ',' + n + ',' + e;
+        var nodeQuery = 'node[' + 'building' + '](' + bounds + ');';
+        var wayQuery = 'way[' + 'building' + '](' + bounds + ');';
+        var relationQuery = 'relation[' + 'building' + '](' + bounds + ');';
+        var query = '?data=[out:json][timeout:15];(' + nodeQuery + wayQuery + relationQuery + ');out body geom;';
+        var baseUrl = 'http://overpass-api.de/api/interpreter';
+        var resultUrl = baseUrl + query;
+		//alert(resultUrl);
+        return resultUrl;
+      }
+
+
+
+//extract and display buildings shape (polygons) and height from OSMBuildings dataset using overpass API 
+function scanBuildings(){
+        var overpassApiUrl = buildOverpassApiUrl();
+        
+        $.get(overpassApiUrl, function (osmDataAsJson) {
+          var resultAsGeojson = osmtogeojson(osmDataAsJson);
+          var resultLayer = L.geoJson(resultAsGeojson, {
+            style: function (feature) {
+              return {stroke: false,fillOpacity: 1,color : 'transparent'};
+            },
+            /*filter: function (feature, layer) {
+              var isPolygon = (feature.geometry) && (feature.geometry.type !== undefined) && (feature.geometry.type === "Polygon");
+              if (isPolygon) {
+                feature.geometry.type = "Point";
+                var polygonCenter = L.latLngBounds(feature.geometry.coordinates[0]).getCenter();
+                feature.geometry.coordinates = [ polygonCenter.lat, polygonCenter.lng ];
+              }
+              return true;
+            },*/
+			//for each building
+            onEachFeature: function (feature, layer) {
+			  var isPolygon = (feature.geometry) && (feature.geometry.type !== undefined) && (feature.geometry.type === "Polygon");
+              if (isPolygon) {
+				  var building;
+				  //the lat and lng are reversed in feature.geometry.coordinates[0]. So we switch them in building.polygon
+				  coords=[];
+				  for(c=0;c<feature.geometry.coordinates[0].length;c++) 
+				  	coords.push([feature.geometry.coordinates[0][c][1],feature.geometry.coordinates[0][c][0]]);
+				  layer.building=new Building(coords);
+
+				  var keys = Object.keys(feature.properties.tags);
+				  stop=false;
+				  levelheight=3;
+				  
+              	  keys.forEach(function (key) {
+						if(key==="height") {layer.building.height=feature.properties.tags[key];stop=true;}
+						else if(!stop && key==="building:levels")  layer.building.height=feature.properties.tags[key]*levelheight;
+				  });
+				  //push the building to the list of net.buildings
+				  net.buildings.push(layer.building);
+				  //add a display representation of the buildings in markerbuilding
+				  polygon=L.polygon(coords);
+				  polygon.height=layer.building.height;
+				  polygon.index=markerbuilding.length;
+				  markerbuilding.push(polygon);
+				  var popupContent = "Height = " + layer.building.height;
+              	  layer.bindTooltip(popupContent);
+				  
+				  layer.on("contextmenu", function (e) { //allows to change the building hight on a right click
+					    rep=prompt("give the right hight of the building:",layer.building.height);
+						if (rep == null) return;
+						newheight=parseInt(rep);
+						this.building.height=newheight;
+						this.bindTooltip("Height = "+this.building.height);
+
+						//recompute the architecture matrix of the building area
+						for(i=0;i<net.areaHeight ;i++)
+							for(j=0;j<net.areaWidth ;j++){
+								var lat=net.southCorner.lat+i*latBin+latBin/2;
+								var lng=net.southCorner.lng+j*lngBin+lngBin/2;
+								var p = L.latLng(lat, lng);
+								if(this.building.polygon.getBounds().contains(p)){
+									architecture[i][j]=this.building.height;
+								}
+							}
+  				   });
+			  }
+              
+            }
+          });
+          resultLayer.addTo(mymap);
+        });
+		 
+}
+
+//only display (the data extraction is made from JSON object) using loadNet function 
+var markerbuilding=[];											//the display of the buildings' polygons. The markers are listed 
+																//in the same order as in the net.buildings list. If a building 
+																//is removed, the marker of the same index should be removed
+function loadBuildings(){
+    for(b=0;b<net.buildings.length;b++){
+		
+		polygon=L.polygon(net.buildings[b].polygon._latlngs,{
+						color : 'transparent'});
+		polygon.height=net.buildings[b].height;
+		polygon.index=b;
+		markerbuilding.push(polygon);
+		
+		
+		polygon.addTo(mymap);
+		var popupContent = "Height = " + polygon.height;
+		polygon.bindTooltip("Height = "+polygon.height);
+		polygon.on("contextmenu", function (e) { //allows to change the building hight on a right click
+						rep=prompt("give the right hight of the building:",this.height);
+						if (rep == null) return;
+						newheight=parseInt(rep);
+						this.height=newheight;
+						net.buildings[this.index].height=newheight;
+						this.bindTooltip("Height = "+this.height);
+
+						//recompute the architecture matrix of the building area
+						for(i=0;i<net.areaHeight ;i++)
+							for(j=0;j<net.areaWidth ;j++){
+								var lat=net.southCorner.lat+i*latBin+latBin/2;
+								var lng=net.southCorner.lng+j*lngBin+lngBin/2;
+								var p = L.latLng(lat, lng);
+								if(this.getBounds().contains(p)){
+									architecture[i][j]=this.height;
+								}
+							}
+  				   });
+	}
+}
+L.mapbox.accessToken = 'pk.eyJ1IjoiaG1hYmVkIiwiYSI6ImNrbzhtdHZ3MDBtaGkybm1xbGc5OGR1dTkifQ.V0tUwrR-NO6M6dXLKXycAw';
+   
+var mapboxTiles = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+       attribution: '© <a href="https://www.mapbox.com/feedback/">Mapbox</a> © <a href="http://www.openstreetmap.org/copyright">OpenStreetMap</a>',
+       tileSize: 512,
+       zoomOffset: -1
+	});
+
+mymap = L.map('mapid')
+  .addLayer(mapboxTiles)
+  .setView([47.265, 6.022], 13);
+
+colorPicker = L.tileLayer.colorPicker('https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=' + L.mapbox.accessToken, {
+  attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
+  maxZoom: 20,
+  id: 'mapbox.outdoors',
+  accessToken: 'your mapbox accesstoken'
+  }).addTo(mymap)
+  .setOpacity(0); // optional
+
+var osmb=new OSMBuildings(mymap).load();
+
+mymap.on('click', onMapClick);
+mymap.on('dblclick', onMapDbClick);
+frameantenna=document.getElementById('frameantenna'); 
+frameantenna.style.visibility='hidden';
+framesite=document.getElementById('framesite'); 
+framesite.style.visibility='hidden';
+</script>
+</html>
