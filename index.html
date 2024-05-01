@@ -102,8 +102,6 @@
 	const UE_COMM = "Communicating"; //UE is in communication
 	const UE_OFF = "Off"; //UE is powered off
 
-	var commOnGoing=0;
-
 	class Network{
 		constructor(){
 			this.name="undefined";
@@ -170,15 +168,13 @@
 		}
 
 		powerOff(){ //Change status to OFF
-			commOnGoing=0;
 			this.status=UE_OFF;
 		}
 
 		startComm(){ //Change status to Communicating
-			if(this.status==UE_ON && commOnGoing==0){ //If UE is ON and not already in communication
-				commOnGoing=1;
+			if(this.status==UE_ON){ //If UE is ON
 				this.status=UE_COMM;
-			} else if(commOnGoing==1){
+			} else if(UE.status==UE_COMM){
 				alert("User equipment already in communication !");
 			} else {
 				alert("User equipment not ready !");
@@ -190,7 +186,7 @@
 
 		idleMode(){ //Change status to Idle
 			if(this.status!=UE_OFF){ //If user equipment is not Off
-				if(commOnGoing==1){
+				if(UE.status==UE_COMM){
 					alert("Ongoing communication !");
 				} else {
 					this.status=UE_IDLE;
