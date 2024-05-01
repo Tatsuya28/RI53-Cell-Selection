@@ -157,24 +157,25 @@
 			this.power = 20;				//in dB
 		}
 	}
-	class UserEquipment {
-		constructor(name,location)
+	class UserEquipment { //Defining the class for user equipments
+		constructor(name,location) //Constructor function
 		{
 			this.name=name;
 			this.location=location;
 			this.status=UE_OFF; //By default, UE is powered off
 		}
 
-		powerOn(){
+		powerOn(){ //Change status to ON
 			this.status=UE_ON;
 		}
 
-		powerOff(){
+		powerOff(){ //Change status to OFF
 			this.status=UE_OFF;
 		}
 
-		startComm(){
-			if(this.status==UE_ON && commOnGoing==0){
+		startComm(){ //Change status to Communicating
+			if(this.status==UE_ON && commOnGoing==0){ //If UE is ON and not already in communication
+				commOnGoing=1;
 				this.status=UE_COMM;
 			} else if(commOnGoing==1){
 				alert("User equipment already in communication !");
@@ -184,8 +185,10 @@
 			}
 		}
 
-		idleMode(){
-			if(this.status!=UE_OFF){
+		//Need to implement end call functionnality in the future
+
+		idleMode(){ //Change status to Idle
+			if(this.status!=UE_OFF){ //If user equipment is not Off
 				if(commOnGoing==1){
 					alert("Ongoing communication !");
 				} else {
@@ -197,7 +200,7 @@
 			}
 		}
 
-		cellSelect(){
+		cellSelect(){ //Change status to Selecting -- Will be used later when implementing cell selection
 			if(this.status!=UE_OFF){
 				this.status=UE_SELECT;
 			}
