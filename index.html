@@ -1,4 +1,4 @@
-﻿<!--This code is developed by Hakim MABED hmabed@gmail.com                       -->
+<!--This code is developed by Hakim MABED hmabed@gmail.com                       -->
 <!--14/04/2019                                                                   -->
 <!--Only for educational and personal use                                        -->
 <!--Objective: Provide a tool for radio network engineering, training and testing-->
@@ -94,6 +94,16 @@
 
 	<script src="jquery.min.js"></script>
 	<script>
+	
+	//Defining different status of the UE
+	const UE_ON = "On"; //Powering on the UE
+	const UE_SELECT = "Selection"; //UE is powered on and is in selection process
+	const UE_IDLE = "Idle"; //UE is in idle mode
+	const UE_COMM = "Communicating"; //UE is in communication
+	const UE_OFF = "Off"; //UE is powered off
+
+	var commOnGoing=0;
+
 	class Network{
 		constructor(){
 			this.name="undefined";
@@ -111,7 +121,8 @@
 			this.expositionThreshold=-115;
 			this.nbantennas=0;     	//number of net.antennas
 			this.nextid=0;			//id of next added antenna
-			this.nbsites=0;			
+			this.nbsites=0;
+			
 		}
 	}
 	class Building{
@@ -144,6 +155,52 @@
 			this.tilt = 0;					//in degrees
 			this.azimut=0;
 			this.power = 20;				//in dB
+		}
+	}
+	class UserEquipment {
+		constructor(name,location)
+		{
+			this.name=name;
+			this.location=location;
+			this.status=UE_OFF; //By default, UE is powered off
+		}
+
+		powerOn(){
+			this.status=UE_ON;
+		}
+
+		powerOff(){
+			this.status=UE_OFF;
+		}
+
+		startComm(){
+			if(this.status==UE_ON && commOnGoing==0){
+				this.status=UE_COMM;
+			} else if(commOnGoing==1){
+				alert("User equipment already in communication !");
+			} else {
+				alert("User equipment not ready !");
+				getUEStatus();
+			}
+		}
+
+		idleMode(){
+			if(this.status!=UE_OFF){
+				if(commOnGoing==1){
+					alert("Ongoing communication !");
+				} else {
+					this.status=UE_IDLE;
+				}
+			} else {
+				alert("User equipment not ready !");
+				getUEStatus();
+			}
+		}
+
+		cellSelect(){
+			if(this.status!=UE_OFF){
+				this.status=UE_SELECT;
+			}
 		}
 	}
 	
@@ -187,6 +244,7 @@
 										//0:select area's SW corner or load net, 1: add site, 2: no action, 3:add building, 4: elevation,
 										//5:select action on the site
 	var selectedSite; 					//currently selected site (right click), in order to be handled
+	var selectedUE;						//currently selected user equipment in order to be handled || Modified
 	var selectedBuilding				//currently selected building (right click), in order to change the height
 	var siteIcon = L.icon({
 		iconUrl: 'site.png',
@@ -209,6 +267,12 @@
 		//shadowAnchor: [4, 62],  // the same for the shadow
 		//popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
 	});
+
+	var ueIcon = L.icon({ //UE icon import || Modified
+		iconUrl: 'userequipment.png',
+		iconSize: [38,50]
+	})
+	
 	//local variables
 	var a;
 	var angleindex;
@@ -245,7 +309,10 @@
 	var LKE;
 	var LFS;
 	var L;
-	var bin = [];	
+	var bin = [];
+	
+	// var lastUEStatus;
+	// var lastUEName;
 
 	var ant;
  	var colors=[];
@@ -346,6 +413,7 @@
 			document.getElementById('batiment').disabled = '';
 			document.getElementById('saveBat').disabled = '';
 			document.getElementById('loadBat').disabled = '';
+			document.getElementById('userequipment').disabled = ''; //Activate button || Modified
 			
 			document.getElementById('elevation').disabled = '';
 			mymap.removeLayer(group1);
@@ -370,6 +438,7 @@
 		mark.bindTooltip(name);
 		mark.site=site;
 		mark.on('click',function(){
+			cancelUE();
 			framesite.style.visibility="visible";
 			selectedSite=this.site;
 			modeclick=5;
@@ -390,6 +459,25 @@
 						color : 'red'}).addTo(elements);
 		line.addTo(mymap);*/
 		document.getElementById('message').value = "Select an action !";
+	}
+
+
+	//Function used to place a UE on the map || Modified
+	function placeUE(name, location) { 
+		ue=new UserEquipment(name,location); //Create a new instance of the class UserEquipment
+		var mark= new L.marker([location.lat, location.lng],{icon: ueIcon}); //Get a marker of the coordinates where to place the UE
+		mark.bindTooltip(name); //Shows the UE name when mouse on the icon
+		mark.ue=ue; //No clue
+		mark.on('click',function(){ //When we click on a UE
+			cancelSite(); //Deactivate the buttons for base station in case it was selected previously
+			frameuserequipment.style.visibility="visible"; //Show the buttons
+			selectedUE=this.ue; //Stored in global variable to be able to manipulate the UE more easily
+			modeclick=5; //Flag - Don't know if necessary
+			document.getElementById('message').value = "Add or remove a user equipment, or list user equipments"; //Requested actions
+		});
+		mark.addTo(mymap); //Adding the marker to the map so that it is displayed
+
+		document.getElementById('message').value = "Select an action !"; //Shown when finished
 	}
 	
 	function listantennas(){
@@ -506,6 +594,38 @@
 		document.getElementById('message').value = "Select an action !";
 		frameantenna.style.visibility='hidden';
 		framesite.style.visibility='hidden';
+		modeclick=2;
+		
+	}
+	//Show the status of the selected user equipment || Modified
+	function getUEStatus(){ 
+		modeclick=2;
+		alert(selectedUE.name+" status : "+selectedUE.status);
+
+	}
+	//Changes the status of UE to ON
+	function powerOnUE(){
+		selectedUE.powerOn();
+		alert(selectedUE.name+" powered On.");
+	}
+	//Changes the status of UE to Off
+	function powerOffUE(){
+		selectedUE.powerOff();
+		alert(selectedUE.name+" powered Off.");
+	}
+	//Changes the status of UE to Communicating to simulate a call
+	function startUECall(){
+		selectedUE.startComm();
+	}
+	//Changes the status of UE to Idle to simulate idle mode and/or end of call
+	function endUECall(){
+		selectedUE.idleMode(); //UE goes IDLE after ending comm
+	}
+	//Disable buttons of UE menu
+	function cancelUE(){
+		modeclick=2;
+		document.getElementById('message').value = "Select an action !";
+		frameuserequipment.style.visibility='hidden';
 		modeclick=2;
 		
 	}
@@ -1038,8 +1158,12 @@
 		document.getElementById('cartehandover').disabled='disabled';
 		document.getElementById('carteCell').disabled='disabled';
 		document.getElementById('carteresidence').disabled='disabled';
-		
 
+	}
+	//Sets flag to add a UE by then calling function placeUE
+	function addUE(){ 
+		document.getElementById('message').value="Place the user equipment or Escape to cancel.";
+		modeclick=7;
 	}
 
 	/*function addAntennaConstructor(){
@@ -1233,6 +1357,7 @@
 		else if(modeclick==1) {modeclick=2;name=prompt("Give a name for the site","");placeSiteConstructor(name,e.latlng);}
 		else if(modeclick==3) {modeclick=2;placeBat(e.latlng);}
 		else if(modeclick==4) {modeclick=2;getElevation(e.latlng);document.getElementById('message').value = "Select an action!";}
+		else if(modeclick==7) {modeclick=2;name=prompt("Give a name for the user equipment","");placeUE(name,e.latlng);} //Flag used here || Modified
 	}
 	function onMapDbClick(e) {
 		alert("You dble clicked the map at " + e.latlng);
@@ -1330,6 +1455,7 @@ function loadNet(){
 				<!--<button type="button" id="axes" value="Ajouter un axe routier" onclick="addaxe()" disabled='disabled'><iaddSitemg src="routes.png"> </button>-->
 				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="bat.png"> </button>
 				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="pylone.png"> </button>
+				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="addUE.png"> </button>
 				<!--<button type="button" title="add new antenna" id="antenna" value="Add an antenna" onclick="addAntennaConstructor()" disabled='disabled'><img src="antenna.png"> </button>-->
 				
 				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="store.png"> </button>
@@ -1395,6 +1521,16 @@ function loadNet(){
 					<input type="button" id="removeantenna" value="Remove antenna" onclick="removeAntenna()" style="width: 48%;"/>
 					<input type="button" id="cancelsite"    value="Cancel" onclick="cancelSite()" style="width: 48%;"/>
 				</div>
+				<!--Show buttons to manipulate UE characteristics || Modified--> 
+				<div id="frameuserequipment">
+					<input type="button" id="UE_PWR_ON"  value="Turn ON" onclick="powerOnUE()" style="width: 48%;"/>
+					<input type="button" id="UE_PWR_OFF"    value="Turn OFF" onclick="powerOffUE()" style="width: 48%;"/>
+					<input type="button" id="UE_COMMUNICATE"    value="Start Call" onclick="startUECall()" style="width: 48%;"/>
+					<input type="button" id="UE_STOPCOMM"    value="End Call" onclick="endUECall()" style="width: 48%;"/>
+					<input type="button" id="UE_GET_STATUS"    value="UE Status" onclick="getUEStatus()" style="width: 48%;"/>
+					<input type="button" id="UE_CANCEL"    value="Cancel" onclick="cancelUE()" style="width: 48%;"/>
+				</div>
+				
 				<div id="frameantenna">
 						<div><label id="labeltech">Radio technogy: </label>
 						<select name="Combobox1" size="1" id="techno" style="width: 30%;">
@@ -1609,5 +1745,7 @@ frameantenna=document.getElementById('frameantenna');
 frameantenna.style.visibility='hidden';
 framesite=document.getElementById('framesite'); 
 framesite.style.visibility='hidden';
+frameuserequipment=document.getElementById('frameuserequipment'); //Disable buttons visibility of UE menu || Modified
+frameuserequipment.style.visibility='hidden';
 </script>
 </html>
