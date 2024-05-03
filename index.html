@@ -247,7 +247,7 @@
 	var selectedUE;						//currently selected user equipment in order to be handled || Modified
 	var selectedBuilding				//currently selected building (right click), in order to change the height
 	var siteIcon = L.icon({
-		iconUrl: 'site.png',
+		iconUrl: './resources/site.png',
 		//shadowUrl: 'site.png',
 
 		iconSize:     [38, 50], // size of the icon
@@ -258,7 +258,7 @@
 	});
 	
 	var triangle = L.icon({
-		iconUrl: 'triangle.png',
+		iconUrl: './resources/triangle.png',
 		//shadowUrl: 'site.png',
 
 		iconSize:     [38, 50], // size of the icon
@@ -269,7 +269,7 @@
 	});
 
 	var ueIcon = L.icon({ //UE icon import || Modified
-		iconUrl: 'userequipment.png',
+		iconUrl: './resources/userequipment.png',
 		iconSize: [38,50]
 	})
 	
@@ -1446,22 +1446,22 @@ function loadNet(){
 	<div id="conteneur">
 		<div id="header">
 			<div>
-				<button type="button" id="loadBat" value="Load buildings" onclick="loadNet()" ><img src="loadNet.png"> </button>
-				<button type="button" id="saveBat" value="Record buildings" onclick="saveNet()" disabled='disabled'><img src="saveNet.png"> </button>
-				<button type="button" title="run the propagation model" id="propag" value="Propagation" onclick="propagation()" disabled='disabled'> <img src="propag.png"> </button>
-				<button type="button" title="reset the propagation computation" id="remove" value="Remove" onclick="vider()"> <img src="erase.png"> </button>
+				<button type="button" id="loadBat" value="Load buildings" onclick="loadNet()" ><img src="./resources/loadNet.png"> </button>
+				<button type="button" id="saveBat" value="Record buildings" onclick="saveNet()" disabled='disabled'><img src="./resources/saveNet.png"> </button>
+				<button type="button" title="run the propagation model" id="propag" value="Propagation" onclick="propagation()" disabled='disabled'> <img src="./resources/propag.png"> </button>
+				<button type="button" title="reset the propagation computation" id="remove" value="Remove" onclick="vider()"> <img src="./resources/erase.png"> </button>
 				<!--<button type="button" id="routes" value="Extraire les routes de la zone (0,0)" onclick="routes()" disabled='disabled'><img src="routes.png"> </button>-->
 				<!--<button type="button" id="completer" value="Compléter les routes" onclick="completer()" disabled='disabled'><img src="routes+.png"> </button> -->
 				<!--<button type="button" id="axes" value="Ajouter un axe routier" onclick="addaxe()" disabled='disabled'><iaddSitemg src="routes.png"> </button>-->
-				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="bat.png"> </button>
-				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="pylone.png"> </button>
-				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="addUE.png"> </button>
+				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="./resources/bat.png"> </button>
+				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="./resources/pylone.png"> </button>
+				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="./resources/addUE.png"> </button>
 				<!--<button type="button" title="add new antenna" id="antenna" value="Add an antenna" onclick="addAntennaConstructor()" disabled='disabled'><img src="antenna.png"> </button>-->
 				
-				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="store.png"> </button>
+				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="./resources/store.png"> </button>
 				 
-				<button type="button" id="elevation" value="Elevation computing" onclick="displayElevation()" disabled='disabled'><img src="elevation.png"> </button>
-				<button type="button" id="move" value="Move simulation" onclick="move()" disabled='disabled'><img src="path.png"> </button>
+				<button type="button" id="elevation" value="Elevation computing" onclick="displayElevation()" disabled='disabled'><img src="./resources/elevation.png"> </button>
+				<button type="button" id="move" value="Move simulation" onclick="move()" disabled='disabled'><img src="./resources/path.png"> </button>
 				 <!--<input type="file" id="fileinput" />-->
 			</div>
 		</div>
