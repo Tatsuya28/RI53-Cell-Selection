@@ -18,6 +18,12 @@
 	integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
 	crossorigin=""/>
 
+	<!-- IMPLEMENTé PAR THOMAS *********************************************************************************************-->
+	<link rel="stylesheet" href="leaflet-routing-machine.css" />
+	<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css">
+	
+	<!--FIM IMPLEMENTé PAR THOMAS **************************************************************************************** -->
+
 	<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
 	integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
 	crossorigin=""></script>
@@ -66,13 +72,60 @@
 		}
 	</style>
 
+	<!-- IMPLEMENTé PAR THOMAS ************************************************************************************************-->
+	<style>
+	.dialog-overlay {
+		position: fixed;
+		top: 0;
+		left: 0;
+		width: 100%;
+		height: 100%;
+		background: rgba(0, 0, 0, 0.5); /* Couche de fond transparent */
+		display: none; /* Masquer la boîte de dialogue par défaut */
+		justify-content: center;
+		align-items: center;
+		z-index: 10;
+	}
+
+	.dialog-box {
+		background: white;
+		padding: 20px;
+		border: 1px solid #ccc;
+		border-radius: 5px;
+		text-align: center;
+	}
+
+	.dialog-buttons {
+		margin-top: 10px;
+	}
+
+	.dialog-button {
+		margin: 5px;
+		padding: 10px 20px;
+		background: #007bff;
+		color: white;
+		border: none;
+		border-radius: 5px;
+		cursor: pointer;
+	}
+
+	.dialog-button:hover {
+		background: #0056b3;
+	}
+
+	.leaflet-control-container .leaflet-routing-container-hide {
+		display: none;
+	}
+	</style>
+	<!-- FIN IMPLEMENTATION PAR THOMAS *******************************************************************************************-->
+
 	<style type="text/css">
 		#conteneur {width:100%; height:90%;margin:0 auto;}
 		#header {background-color: #FFD700;width:100%;}
 		#footer {background-color: #FFD700;height:20px;width:100%;}
 		#sidebar {position:absolute;background-color: #469aa5;width:230px;height: 89vh;}
 		#contenu {margin-left:230px;}
-		#mapid { height: 89vh; }
+		#mapid { height: 89vh;z-index: 1; }
 
 		#Combobox1
 		{
@@ -131,7 +184,6 @@
 			return null;
 		}
 	}
-	
 	class Building{
 		constructor(polygon=null)
 		{
@@ -164,7 +216,7 @@
 			this.power = 20;				//in dB
 		}
 	}
-	class UserEquipment { //Defining the class for user equipments 
+	class UserEquipment { //Defining the class for user equipments
 		constructor(name,location) //Constructor function
 		{
 			this.name=name;
@@ -220,7 +272,7 @@
 				this.polyline=null;
 			}
 		}
-		
+
 		powerOn(){ //Change status to ON
 			this.status=UE_ON;
 			this.selectAnt();
@@ -245,7 +297,7 @@
 
 		idleMode(){ //Change status to Idle
 			if(this.status!=UE_OFF){ //If user equipment is not Off
-				this.status=UE_IDLE;	
+				this.status=UE_IDLE;
 			} else {
 				alert("User equipment not ready !");
 				getUEStatus();
@@ -302,7 +354,7 @@
 	var selectedUE;						//currently selected user equipment in order to be handled || Modified
 	var selectedBuilding				//currently selected building (right click), in order to change the height
 	var siteIcon = L.icon({
-		iconUrl: 'site.png',
+		iconUrl: './resources/site.png',
 		//shadowUrl: 'site.png',
 
 		iconSize:     [38, 50], // size of the icon
@@ -313,7 +365,7 @@
 	});
 	
 	var triangle = L.icon({
-		iconUrl: 'triangle.png',
+		iconUrl: './resources/triangle.png',
 		//shadowUrl: 'site.png',
 
 		iconSize:     [38, 50], // size of the icon
@@ -324,9 +376,11 @@
 	});
 
 	var ueIcon = L.icon({ //UE icon import || Modified
-		iconUrl: 'userequipment.png',
+		iconUrl: './resources/userequipment.png',
 		iconSize: [38,50]
 	})
+
+	
 	
 	//local variables
 	var a;
@@ -365,7 +419,11 @@
 	var LFS;
 	var L;
 	var bin = [];
+	var marker = L.marker(); //Modified Thomas
+    var marker2 = L.marker();//Modified Thomas
 	
+	// var lastUEStatus;
+	// var lastUEName;
 
 	var ant;
  	var colors=[];
@@ -467,6 +525,8 @@
 			document.getElementById('saveBat').disabled = '';
 			document.getElementById('loadBat').disabled = '';
 			document.getElementById('userequipment').disabled = ''; //Activate button || Modified
+			document.getElementById('itinerary').disabled = ''; //Activate button || Modified
+
 			
 			document.getElementById('elevation').disabled = '';
 			mymap.removeLayer(group1);
@@ -532,6 +592,88 @@
 
 		document.getElementById('message').value = "Select an action !"; //Shown when finished
 	}
+
+	//Function used to place the marker on the origin for the path of the user ||Modified Thomas
+
+	function placeorigin(latlng,originset,destinationset){
+        latlngorigine=latlng
+        marker
+        .setLatLng(latlng)
+        .addTo(mymap);
+        marker.bindPopup("<b>Origin</b><br>").openPopup();
+		finishItinerary(originset,destinationset);
+
+    }
+
+	//Function used to place a marker on the destination for the path of the user ||Modified Thomas 
+	function placedestination(latlng,originset,destinationset){
+        latlngdest=latlng
+        marker2
+            .setLatLng(latlng)
+            .addTo(mymap);
+        marker2.bindPopup("<b>destination</b><br>").openPopup();
+		finishItinerary(originset,destinationset);
+        
+    }
+	//Modified
+	function finishItinerary(originset,destinationset){
+		if(destinationset==1 || originset==1){
+			frameitinerary.style.visibility="visible"; //Show the buttons
+			console.log("remise a zero des deux valeurs " );
+			originset=0;
+			destinationset=0;
+
+		}
+		else{
+			
+		}
+	}
+	// Function to show dialog box || Modified Thomas
+	function afficherDialog() {
+        document.getElementById("dialog").style.display = "flex";
+        }
+
+	//function to manage user's choice ||Modified Thomas
+	function chooseOption(option) {
+			var originset;
+			var destinationset;
+            if(option==1){
+				originset=1;
+                placeorigin(latitudelongitude,originset,destinationset)
+				
+            }
+            else if(option==2){
+				destinationset=1;
+                placedestination(latitudelongitude,originset,destinationset)
+				
+            }
+            else{
+                alert("a problem has occuried")
+            }
+
+            console.log("Vous avez choisi l'option " + option);
+            document.getElementById("dialog").style.display = "none";
+        }
+
+	function addItinerary(){
+		var controlrouting = L.Routing.control({
+        waypoints: [
+            L.latLng(latlngorigine) ,
+            L.latLng(latlngdest)
+        ],
+        router: L.Routing.osrmv1(
+            {serviceUrl: 'https://router.project-osrm.org/route/v1'}
+        ),
+        lineOptions: {
+            styles: [{color: 'blue',weight: 3}]
+        }
+    }).addTo(mymap);
+    controlrouting.hide()
+
+	modeclick=2;
+	
+	frameitinerary.style.visibility='hidden';//Modified
+	} 
 	
 	function listantennas(){
 		for(i=0;i<selectedSite.antennas.length;i++)
@@ -682,6 +824,9 @@
 		modeclick=2;
 		
 	}
+
+
+
 	//action when the radio propagation computing is required : click on the button
 	function propagation() {
 		//compute the elevation of the net.buildings
@@ -1213,11 +1358,16 @@
 		document.getElementById('carteresidence').disabled='disabled';
 
 	}
-	//Sets flag to add a UE by then calling function placeUE
+	//Sets flag to add a UE by then calling function placeUE 
 	function addUE(){ 
 		document.getElementById('message').value="Place the user equipment or Escape to cancel.";
 		modeclick=7;
 	}
+
+	function createitinerary(){ 
+		document.getElementById('message').value="Place the origin and destination points.";
+		modeclick=8;
+	} //Modified
 
 	/*function addAntennaConstructor(){
 		document.getElementById('message').value="Place the antenna ! or Escap to cancel !";
@@ -1411,6 +1561,7 @@
 		else if(modeclick==3) {modeclick=2;placeBat(e.latlng);}
 		else if(modeclick==4) {modeclick=2;getElevation(e.latlng);document.getElementById('message').value = "Select an action!";}
 		else if(modeclick==7) {modeclick=2;name=prompt("Give a name for the user equipment","");placeUE(name,e.latlng);} //Flag used here || Modified
+		else if(modeclick==8) {modeclick=8; latitudelongitude=e.latlng; afficherDialog();}//Flag used here to place the  origin point for the path of the user || Modified Thomas
 	}
 	function onMapDbClick(e) {
 		alert("You dble clicked the map at " + e.latlng);
@@ -1496,25 +1647,31 @@ function loadNet(){
 
 </head>
   <body>
+	<!-- Modified Thomas -->
+	
+	<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
+
+
 	<div id="conteneur">
 		<div id="header">
 			<div>
-				<button type="button" id="loadBat" value="Load buildings" onclick="loadNet()" ><img src="loadNet.png"> </button>
-				<button type="button" id="saveBat" value="Record buildings" onclick="saveNet()" disabled='disabled'><img src="saveNet.png"> </button>
-				<button type="button" title="run the propagation model" id="propag" value="Propagation" onclick="propagation()" disabled='disabled'> <img src="propag.png"> </button>
-				<button type="button" title="reset the propagation computation" id="remove" value="Remove" onclick="vider()"> <img src="erase.png"> </button>
+				<button type="button" id="loadBat" value="Load buildings" onclick="loadNet()" ><img src="./resources/loadNet.png"> </button>
+				<button type="button" id="saveBat" value="Record buildings" onclick="saveNet()" disabled='disabled'><img src="./resources/saveNet.png"> </button>
+				<button type="button" title="run the propagation model" id="propag" value="Propagation" onclick="propagation()" disabled='disabled'> <img src="./resources/propag.png"> </button>
+				<button type="button" title="reset the propagation computation" id="remove" value="Remove" onclick="vider()"> <img src="./resources/erase.png"> </button>
 				<!--<button type="button" id="routes" value="Extraire les routes de la zone (0,0)" onclick="routes()" disabled='disabled'><img src="routes.png"> </button>-->
 				<!--<button type="button" id="completer" value="Compléter les routes" onclick="completer()" disabled='disabled'><img src="routes+.png"> </button> -->
 				<!--<button type="button" id="axes" value="Ajouter un axe routier" onclick="addaxe()" disabled='disabled'><iaddSitemg src="routes.png"> </button>-->
-				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="bat.png"> </button>
-				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="pylone.png"> </button>
-				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="addUE.png"> </button>
+				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="./resources/bat.png"> </button>
+				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="./resources/pylone.png"> </button>
+				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="./resources/addUE.png"> </button> <!--Modified -->
 				<!--<button type="button" title="add new antenna" id="antenna" value="Add an antenna" onclick="addAntennaConstructor()" disabled='disabled'><img src="antenna.png"> </button>-->
-				
-				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="store.png"> </button>
+				<button type="button" title="create itinerary" id="itinerary" value="create itinerary" onclick="createitinerary()" disabled='disabled'><img src="./resources/itinerary.png"> </button> <!--Modified -->
+
+				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="./resources/store.png"> </button>
 				 
-				<button type="button" id="elevation" value="Elevation computing" onclick="displayElevation()" disabled='disabled'><img src="elevation.png"> </button>
-				<button type="button" id="move" value="Move simulation" onclick="move()" disabled='disabled'><img src="path.png"> </button>
+				<button type="button" id="elevation" value="Elevation computing" onclick="displayElevation()" disabled='disabled'><img src="./resources/elevation.png"> </button>
+				<button type="button" id="move" value="Move simulation" onclick="move()" disabled='disabled'><img src="./resources/path.png"> </button>
 				 <!--<input type="file" id="fileinput" />-->
 			</div>
 		</div>
@@ -1583,6 +1740,10 @@ function loadNet(){
 					<input type="button" id="UE_GET_STATUS"    value="UE Status" onclick="getUEStatus()" style="width: 48%;"/>
 					<input type="button" id="UE_CANCEL"    value="Cancel" onclick="cancelUE()" style="width: 48%;"/>
 				</div>
+				<div id="frameitinerary"> <!--Modified-->
+					<input type="button" id="VALIDATE_ITINERARY"  value="Finish" onclick="addItinerary()" style="width: 98%;"/>
+					*
+				</div>
 				
 				<div id="frameantenna">
 						<div><label id="labeltech">Radio technogy: </label>
@@ -1633,6 +1794,19 @@ function loadNet(){
 			<div> <input type="text" style="width:800px;" id="message" value="Select the south-west corner the deployment area or load network data!" readonly> </div>
 		</div>
 	</div>
+
+	<!-- Modified THOMAS /////////////////////////////////////////////////////////////////////////////////////////////-->
+
+	<div id="dialog" class="dialog-overlay">
+        <div class="dialog-box">
+            <p>Quel est votre choix?</p>
+            <div class="dialog-buttons">
+                <button class="dialog-button" onclick="chooseOption(1)">Origine</button>
+                <button class="dialog-button" onclick="chooseOption(2)">Destination</button>
+            </div>
+        </div>
+    </div>
+	<!-- fin modifié par thomas////////////////////////////////////////////////////////////////////////////////////////// -->
   </body>
 
 
@@ -1780,7 +1954,8 @@ var mapboxTiles = L.tileLayer('http://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png
 
 mymap = L.map('mapid')
   .addLayer(mapboxTiles)
-  .setView([47.265, 6.022], 13);
+
+  .setView([47.633, 6.853], 13);
 
 colorPicker = L.tileLayer.colorPicker('https://api.mapbox.com/v4/mapbox.terrain-rgb/{z}/{x}/{y}.pngraw?access_token=' + L.mapbox.accessToken, {
   attribution: 'Map data &copy; <a href="https://www.openstreetmap.org/">OpenStreetMap</a> contributors, <a href="https://creativecommons.org/licenses/by-sa/2.0/">CC-BY-SA</a>, Imagery © <a href="https://www.mapbox.com/">Mapbox</a>',
@@ -1800,5 +1975,7 @@ framesite=document.getElementById('framesite');
 framesite.style.visibility='hidden';
 frameuserequipment=document.getElementById('frameuserequipment'); //Disable buttons visibility of UE menu || Modified
 frameuserequipment.style.visibility='hidden';
+frameitinerary=document.getElementById('frameitinerary'); //Disable buttons visibility of itinerary menu || Modified
+frameitinerary.style.visibility='hidden';//Modified
 </script>
 </html>
