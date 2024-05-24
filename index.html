@@ -655,25 +655,88 @@
             document.getElementById("dialog").style.display = "none";
         }
 
-	function addItinerary(){
+	// function to use the API of OSRM to find a travel itinerary that can be used by the user of the phone to simulate a movement.
+	//Modified
+	function addItinerary() {
 		var controlrouting = L.Routing.control({
-        waypoints: [
-            L.latLng(latlngorigine) ,
-            L.latLng(latlngdest)
-        ],
-        router: L.Routing.osrmv1(
-            {serviceUrl: 'https://router.project-osrm.org/route/v1'}
-        ),
-        lineOptions: {
-            styles: [{color: 'blue',weight: 3}]
-        }
-    }).addTo(mymap);
-    controlrouting.hide()
+			waypoints: [
+				L.latLng(latlngorigine),
+				L.latLng(latlngdest)
+			],
+			router: L.Routing.osrmv1({
+				serviceUrl: 'https://router.project-osrm.org/route/v1'
+			}),
+			lineOptions: {
+				styles: [{ color: 'blue', weight: 3 }]
+			}
+		}).addTo(mymap);
 
-	modeclick=2;
-	
-	frameitinerary.style.visibility='hidden';//Modified
-	} 
+		controlrouting.hide();
+
+		controlrouting.on('routesfound', function (e) {
+			var routes = e.routes;
+			console.log(routes[0].coordinates[1].lat);
+
+			routes[0].coordinates.forEach(function (coord, index) {
+				console.log('Point ' + index + ': ' + coord.lat + ', ' + coord.lng);
+			});
+			//we are fragmenting the vectors for them to have nearly the same size, for the smoothness of the travel
+			var routevectors = [];
+			for (let i = 0; i < routes[0].coordinates.length - 1; i++) {
+				var vectorlng = routes[0].coordinates[i + 1].lng - routes[0].coordinates[i].lng;
+				var vectorlat = routes[0].coordinates[i + 1].lat - routes[0].coordinates[i].lat;
+
+				var biggest = Math.max(Math.abs(vectorlng), Math.abs(vectorlat));
+				var fragSize = 0.000002
+				if (biggest > fragSize) {
+					var quotient = Math.ceil(biggest / fragSize);
+					for (let frag = 0; frag < quotient; frag++) {
+						var fraglng = vectorlng / quotient;
+						var fraglat = vectorlat / quotient;
+						var vector = { lat: fraglat, lng: fraglng };
+						routevectors.push(vector);
+					}
+				} else {
+					var vector = { lat: vectorlat, lng: vectorlng };
+					routevectors.push(vector);
+				}
+			}
+
+			console.log(routevectors);
+
+			//add of the UE icon on the start point
+			var startMarker = L.marker([routes[0].coordinates[0].lat, routes[0].coordinates[0].lng], {
+				icon: ueIcon
+			}).addTo(mymap);
+
+			// move the marker along the itinerary
+			travelItinerary(startMarker, routevectors, 30000); // 30000 ms = 30 secondes
+		});
+		modeclick=2;
+		
+		frameitinerary.style.visibility='hidden';
+	}
+
+	// move the  marker along  the itinerary // Modified
+	function travelItinerary(marker, vectors, totalTime) { 
+		var intervalTime = totalTime / vectors.length;
+
+		let index = 0;
+		function moveMarker() {
+			if (index < vectors.length) {
+				var currentLat = marker.getLatLng().lat;
+				var currentLng = marker.getLatLng().lng;
+				var newLat = currentLat + vectors[index].lat;
+				var newLng = currentLng + vectors[index].lng;
+				marker.setLatLng([newLat, newLng]);
+				index++;
+				setTimeout(moveMarker, intervalTime);
+			}
+		}
+
+		// start the movement of the marker
+		moveMarker();
+	}
 	
 	function listantennas(){
 		for(i=0;i<selectedSite.antennas.length;i++)
