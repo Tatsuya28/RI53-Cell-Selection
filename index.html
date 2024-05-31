@@ -625,8 +625,10 @@
 
 	//Function used to move UE to another location
 	function moveUE(ue, newLocation){
-		ue.location=newLocation;
-		ue.marker.setLatLng(newLocation);
+		var loc = new L.LatLng(ue.location.lat + newLocation.lat, ue.location.lng + newLocation.lng)
+		ue.location=loc;
+		ue.marker.location=loc;
+		ue.marker.setLatLng(loc);
 		ue.marker.remove();
 		ue.marker.addTo(mymap);
 		ue.selectAnt();
@@ -698,6 +700,8 @@
 	// function to use the API of OSRM to find a travel itinerary that can be used by the user of the phone to simulate a movement.
 	//Modified
 	function addItinerary() {
+		var durationitinerary = document.getElementById("TIME_ITINERARY").value
+
 		var currentUE=selectedUE;
 		var controlrouting = L.Routing.control({
 			waypoints: [
@@ -728,7 +732,7 @@
 				var vectorlat = routes[0].coordinates[i + 1].lat - routes[0].coordinates[i].lat;
 
 				var biggest = Math.max(Math.abs(vectorlng), Math.abs(vectorlat));
-				var fragSize = 0.000002
+				var fragSize = durationitinerary * Math.pow(10,-(Math.log10(durationitinerary)*2 +1))
 				if (biggest > fragSize) {
 					var quotient = Math.ceil(biggest / fragSize);
 					for (let frag = 0; frag < quotient; frag++) {
@@ -745,27 +749,26 @@
 
 			console.log(routevectors);
 
-			//add of the UE icon on the start point
-			// var startMarker = L.marker([routes[0].coordinates[0].lat, routes[0].coordinates[0].lng], {
-			// 	icon: ueIcon
-			// }).addTo(mymap);
-
 			// move the marker along the itinerary
-			travelItinerary(currentUE, routes[0].coordinates, 30000); // 30000 ms = 30 secondes
+			travelItinerary(currentUE, routes[0].coordinates[0], routevectors, durationitinerary); // 30000 ms = 30 secondes
 		});
 		modeclick=2;
 		
 		frameitinerary.style.visibility='hidden';
 	}
 
-	async function travelItinerary(ue,vectors,totalTime){ //Hakan
-		var timeInterval = totalTime/vectors.length;
+	async function travelItinerary(ue, startlocation, vectors, totalTime){ //Hakan
+		var timeInterval = totalTime/vectors.length * 0.92;
 		await wait(2000);
-		console.log("Checkpoint 1");
+		console.log("Checkpoint 1 : " + vectors.length);
+		// console.log("Checkpoint 2 : " + vectors);
+		// console.log("Checkpoint 3 : " + JSON.stringify(vectors[1]));
 
 		let index = 0;
+		ue.location = startlocation
 		while(index<vectors.length){
-			moveUE(ue, vectors[index]);
+			var vector = new L.LatLng(vectors[index].lat, vectors[index].lng)
+			moveUE(ue, vector);
 			index++;
 			console.log("Index"+index);
 			console.log(vectors[index]);
@@ -775,7 +778,7 @@
 
 	// // move the  marker along  the itinerary // Modified
 	// function travelItinerary(marker, vectors, totalTime) { 
-	// 	var intervalTime = totalTime / vectors.length;
+	// 	var intervalTime = totalTime / vectors.length * 0.96;
 
 	// 	let index = 0;
 	// 	function moveMarker() {
@@ -1860,8 +1863,10 @@ function loadNet(){
 					<input type="button" id="UE_CANCEL"    value="Cancel" onclick="cancelUE()" style="width: 48%;"/>
 				</div>
 				<div id="frameitinerary"> <!--Modified-->
+					<label for="TIME_ITINERARY" style="display: inline;"> 
+                        duration : <input type="number" id="TIME_ITINERARY" name="TIME_ITINERARY" value=30000 min="5000" max="45000"  style="width: 25%;"/> ms
+                    </label>
 					<input type="button" id="VALIDATE_ITINERARY"  value="Finish" onclick="addItinerary()" style="width: 98%;"/>
-					*
 				</div>
 				
 				<div id="frameantenna">
