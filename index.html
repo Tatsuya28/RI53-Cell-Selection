@@ -261,28 +261,12 @@
 				console.log("Selected new antenna with id"+this.selectedAnt+" received power is "+this.receptionPower);
 			}
 			
-			// for(a=0;a<net.nbantennas;a++){
-			// 	var antPower = powerMatrix[a][this.iUE][this.jUE];
-			// 	if(antPower>this.receptionPower && a!=this.selectAnt){
-			// 		this.selectedAnt=a;
-			// 		this.connectedAnt=net.findAntennaById(this.selectedAnt);
-			// 		console.log(this.selectedAnt);
-			// 		console.log(this.connectedAnt);
-			// 		console.log("Nouvelle antenne");
-			// 		//alert("New antenna selected");
-					
-			// 		this.receptionPower = antPower;
-			// 	}
-			// }
-
-
-			// console.log(this.location);
-			// console.log(this.iUE);
-			// console.log(this.jUE);
-			// console.log(this.selectedAnt);
-			// console.log(this.receptionPower);
-			this.removeConnection();
-			this.drawConnection();
+			if(this.receptionPower>=net.sensitivityThreshold){
+				this.removeConnection();
+				this.drawConnection();
+			} else {
+				this.removeConnection();
+			}
 		}
 
 		drawConnection(){ //Modif
