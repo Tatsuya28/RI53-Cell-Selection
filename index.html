@@ -245,6 +245,8 @@
 			this.connectedAnt=null;
 			this.polyline=null;
 			this.marker=null;
+			this.antennas = [];
+			this.polys = [];
 		}
 
 		// this.sensitivityThreshold=-140;  // sensitivity threshold : minimum thereshold allowing that the phone detects the signal 
@@ -277,12 +279,69 @@
 				console.log("Selected new antenna with id"+this.selectedAnt+" received power is "+this.receptionPower);
 			}
 			
+			this.removeConnection();
+			this.removeHandover();
 			if(this.receptionPower>=net.sensitivityThreshold){
-				this.removeConnection();
 				this.drawConnection();
-			} else {
-				this.removeConnection();
+				this.softHandover();
 			}
+		}
+
+		softHandover(){
+			// UTILISER VARIABLE GLOBALE
+			this.antennas = []; // Array of detected antennas
+			var areaRadiusHandover = 3;
+
+			var xOrigin = this.iUE-areaRadiusHandover;
+			if(xOrigin<0){
+				xOrigin=0;
+			} else if (xOrigin>net.areaWidth){
+				xOrigin=net.areaWidth
+			}
+
+			var yOrigin = this.jUE-areaRadiusHandover;
+			if(yOrigin<0){
+				yOrigin=0;
+			} else if (yOrigin>net.areaHeight){
+				yOrigin=net.areaHeight;
+			}
+
+
+			for(var xPos=xOrigin;xPos<this.iUE+areaRadiusHandover;xPos++){
+				for(var yPos=yOrigin;yPos<this.iUE+areaRadiusHandover;yPos++){
+					for(var id=0;id<net.nbantennas;id++){
+						if(id==this.selectedAnt){
+							continue;
+						} else if(this.antennas.includes(id)){
+							continue;
+						} else {
+							if(powerMatrix[id][xPos][yPos]>net.sensitivityThreshold){
+								this.antennas.push(id);
+							}
+						}
+					}
+				}
+			}
+
+			this.drawHandover();
+		}
+
+		drawHandover(){
+			var handoverAntenna = null;
+
+			for(var i=0;i<this.antennas.length;i++){
+				handoverAntenna = net.findAntennaById(this.antennas[i]);
+
+				this.polys.push(L.polyline([[this.location.lat,this.location.lng],[handoverAntenna.location.lat,handoverAntenna.location.lng]], {color: 'gray',opacity: 0.5}).addTo(mymap));
+			}
+		}
+
+		removeHandover(){
+			for(var i=0;i<this.polys.length;i++){
+				mymap.removeLayer(this.polys[i]);
+			}
+			
+			this.polys=[];
 		}
 
 		drawConnection(){ //Modif
