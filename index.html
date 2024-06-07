@@ -264,13 +264,18 @@
 			var previousAnt = this.selectedAnt;
 
 			for(a=0;a<net.nbantennas;a++){
-				var antPower = powerMatrix[a][this.iUE][this.jUE];
-
-				if(antPower>this.receptionPower){
-					this.receptionPower=antPower;
-					this.selectedAnt=a;
-					this.connectedAnt=net.findAntennaById(this.selectedAnt);
+				try {
+					var antPower = powerMatrix[a][this.iUE][this.jUE];
+					if(antPower>this.receptionPower){
+						this.receptionPower=antPower;
+						this.selectedAnt=a;
+						this.connectedAnt=net.findAntennaById(this.selectedAnt);
 				}
+				} catch (error) {
+					console.log("erreur hors zone")
+				}
+
+				
 
 			}
 
