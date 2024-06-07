@@ -238,7 +238,7 @@
 			this.name=name;
 			this.location=location;
 			this.status=UE_OFF; //By default, UE is powered off
-			this.selectedAnt=null;//Grosse modif
+			this.selectedAnt=null;//big modif
 			this.receptionPower=-1000;
 			this.iUE;
 			this.jUE;
@@ -506,8 +506,8 @@
 	var LFS;
 	var L;
 	var bin = [];
-	var marker = L.marker(); //Modified Thomas
-    var marker2 = L.marker();//Modified Thomas
+	var marker = L.marker(); //Modified Creation of the two markers permitting to draw the itinerary
+    var marker2 = L.marker();
 	
 	// var lastUEStatus;
 	// var lastUEName;
@@ -617,7 +617,6 @@
 			document.getElementById('saveBat').disabled = '';
 			document.getElementById('loadBat').disabled = '';
 			document.getElementById('userequipment').disabled = ''; //Activate button || Modified
-			//document.getElementById('itinerary').disabled = ''; //Activate button || Modified
 
 			
 			document.getElementById('elevation').disabled = '';
@@ -699,39 +698,33 @@
 	}
 
 
-	//Function used to place the marker on the origin for the path of the user ||Modified Thomas
+	//Function used to place the marker on the origin for the path of the user ||Modified 
 
-	function placeorigin(latlng,originset,destinationset){
+	function placeorigin(latlng, originset, destinationset){
         latlngorigine=latlng
         marker
-        .setLatLng(latlng)
-        .addTo(mymap);
-        marker.bindPopup("<b>Origin</b><br>").openPopup();
-		finishItinerary(originset,destinationset);
-
+        	.setLatLng(latlng)
+        	.addTo(mymap);
+		finishItinerary(originset, destinationset);
     }
 
-	//Function used to place a marker on the destination for the path of the user ||Modified Thomas 
-	function placedestination(latlng,originset,destinationset){
+	//Function used to place a marker on the destination for the path of the user ||Modified 
+	function placedestination(latlng, originset, destinationset){
         latlngdest=latlng
         marker2
             .setLatLng(latlng)
-            .addTo(mymap);
-        marker2.bindPopup("<b>destination</b><br>").openPopup();
-		finishItinerary(originset,destinationset);
-        
+            .addTo(mymap)
+			._icon.style.filter = "hue-rotate(120deg)";
+		finishItinerary(originset, destinationset);
     }
-	//Modified
-	function finishItinerary(originset,destinationset){
-		if(destinationset==1 || originset==1){
+
+	//  || Modified 
+	function finishItinerary(originset, destinationset){
+		if(destinationset==1 && originset==1){
 			frameitinerary.style.visibility="visible"; //Show the buttons
-			console.log("remise a zero des deux valeurs " );
+			console.log("Turn to 0 originset and destinationset for next itinerary");
 			originset=0;
 			destinationset=0;
-
-		}
-		else{
-			
 		}
 	}
 	// Function to show dialog box || Modified Thomas
@@ -744,37 +737,36 @@
 	}
 
 	//function to manage user's choice ||Modified Thomas
+	var originset = 0;
+	var destinationset = 0;
 	function chooseOption(option) {
-			var originset;
-			var destinationset;
             if(option==1){
 				originset=1;
-                placeorigin(latitudelongitude,originset,destinationset)
-				
+                placeorigin(latitudelongitude, originset, destinationset);
             }
             else if(option==2){
 				destinationset=1;
-                placedestination(latitudelongitude,originset,destinationset)
-				
+                placedestination(latitudelongitude, originset, destinationset);
             }
             else{
-                alert("a problem has occuried")
+                alert("a problem has occurred");
             }
-
-            console.log("Vous avez choisi l'option " + option);
+			console.log("originset = " + originset + " | destinationset = " + destinationset);
             document.getElementById("dialog").style.display = "none";
         }
 
 	// function to use the API of OSRM to find a travel itinerary that can be used by the user of the phone to simulate a movement.
 	//Modified
 	function addItinerary() {
-		var durationitinerary = document.getElementById("TIME_ITINERARY").value
-
+		var durationitinerary = document.getElementById("TIME_ITINERARY").value * 1000
 		var currentUE=selectedUE;
+		mymap.removeLayer(marker)
+		mymap.removeLayer(marker2)
 		var controlrouting = L.Routing.control({
 			waypoints: [
 				L.latLng(latlngorigine),
-				L.latLng(latlngdest)
+				L.latLng(latlngdest),
+					
 			],
 			router: L.Routing.osrmv1({
 				serviceUrl: 'https://router.project-osrm.org/route/v1'
@@ -783,7 +775,12 @@
 				styles: [{ color: 'blue', weight: 3 }]
 			}
 		}).addTo(mymap);
+		
+		// Get the second marker, i.e. the destination one and put color filter
+		var locationmarkers = document.getElementsByClassName("leaflet-marker-icon leaflet-zoom-animated leaflet-interactive leaflet-marker-draggable");
+		locationmarkers[locationmarkers.length-1].style.filter = "hue-rotate(120deg)";
 
+		// Hide instructions for the itinerary
 		controlrouting.hide();
 
 		controlrouting.on('routesfound', function (e) {
@@ -1965,7 +1962,7 @@ function loadNet(){
 				</div>
 				<div id="frameitinerary"> <!--Modified-->
 					<label for="TIME_ITINERARY" style="display: inline; width: 100%;"> 
-                        duration : <input type="number" id="TIME_ITINERARY" name="TIME_ITINERARY" value=30000 min="5000" max="45000"  style="width: 25%;"/> ms
+                        duration : <input type="number" id="TIME_ITINERARY" name="TIME_ITINERARY" value=30 min="5" max="45" style="width: 25%;"/> s
                     </label>
 		
 					<label for="CONSTANT_SPEED" style="display: flex;"> 
@@ -2027,19 +2024,19 @@ function loadNet(){
 		</div>
 	</div>
 
-	<!-- Modified THOMAS /////////////////////////////////////////////////////////////////////////////////////////////-->
-
+	<!-- Modified /////////////////////////////////////////////////////////////////////////////////////////////-->
+	<!-- Apparition of the dialog box that permits to choose between origin and destination for the itinerary-->
 	<div id="dialog" class="dialog-overlay">
         <div class="dialog-box">
 			<span class="dialog-close" onclick="closeDialog()">&times;</span>
-            <p>Quel est votre choix?</p>
+            <p>what is your choice?</p>
             <div class="dialog-buttons">
-                <button class="dialog-button" onclick="chooseOption(1)">Origine</button>
-                <button class="dialog-button" onclick="chooseOption(2)">Destination</button>
+                <button class="dialog-button" onclick="chooseOption(1)">Origin</button>
+                <button class="dialog-button" onclick="chooseOption(2)" style="background-color: #e4528b;">Destination</button>
             </div>
         </div>
     </div>
-	<!-- fin modifié par thomas////////////////////////////////////////////////////////////////////////////////////////// -->
+	<!-- fin modified////////////////////////////////////////////////////////////////////////////////////////// -->
   </body>
 
 
@@ -2209,6 +2206,6 @@ framesite.style.visibility='hidden';
 frameuserequipment=document.getElementById('frameuserequipment'); //Disable buttons visibility of UE menu || Modified
 frameuserequipment.style.visibility='hidden';
 frameitinerary=document.getElementById('frameitinerary'); //Disable buttons visibility of itinerary menu || Modified
-frameitinerary.style.visibility='hidden';//Modified
+frameitinerary.style.visibility='hidden';
 </script>
 </html>
