@@ -617,7 +617,7 @@
 			document.getElementById('saveBat').disabled = '';
 			document.getElementById('loadBat').disabled = '';
 			document.getElementById('userequipment').disabled = ''; //Activate button || Modified
-			document.getElementById('itinerary').disabled = ''; //Activate button || Modified
+			//document.getElementById('itinerary').disabled = ''; //Activate button || Modified
 
 			
 			document.getElementById('elevation').disabled = '';
@@ -683,7 +683,7 @@
 			document.getElementById('message').value = "Add or remove a user equipment, or list user equipments"; //Requested actions
 		});
 		mark.addTo(mymap); //Adding the marker to the map so that it is displayed
-
+		document.getElementById('itinerary').disabled = '';
 		document.getElementById('message').value = "Select an action !"; //Shown when finished
 	}
 
