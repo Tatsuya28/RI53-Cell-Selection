@@ -318,6 +318,7 @@
 				if(this.status==UE_COMM || this.status==UE_LQCOMM){
 					this.endComm();
 					this.status=UE_CALLDROP;
+					holdItinerary=true;
 					this.updateIcon();
 					this.powerOn();
 				}
@@ -337,7 +338,7 @@
 		}
 
 		softHandover(){
-			// UTILISER VARIABLE GLOBALE
+
 			this.antennas = []; // Array of detected antennas
 			var areaRadiusHandover = 3;
 
@@ -450,7 +451,7 @@
 		}
 
 		endComm(){
-			if(this.status==UE_COMM ||this.status==UE_LQCOMM){
+			if(this.status==UE_COMM||this.status==UE_LQCOMM){
 				this.status=UE_IDLE;
 				this.updateIcon();
 
@@ -609,8 +610,7 @@
 	var marker = L.marker(); //Modified Creation of the two markers permitting to draw the itinerary
     var marker2 = L.marker();
 	
-	// var lastUEStatus;
-	// var lastUEName;
+	var holdItinerary=false;
 
 	var ant;
  	var colors=[];
@@ -939,6 +939,10 @@
 		let index = 0;
 		ue.location = startlocation
 		while(index<vectors.length){
+			if(holdItinerary==true){
+				await wait(1000);
+				holdItinerary=false;
+			}
 			var vector = new L.LatLng(vectors[index].lat, vectors[index].lng)
 			moveUE(ue, vector);
 			index++;
