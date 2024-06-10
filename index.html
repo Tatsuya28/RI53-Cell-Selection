@@ -165,11 +165,12 @@
 	<script>
 	
 	//Defining different status of the UE
-	const UE_ON = "On"; //Powering on the UE
-	const UE_SELECT = "Selection"; //UE is powered on and is in selection process
+	const UE_OFF = "Off";
+	const UE_SELECT = "Selection Process"; //UE is powered on and is in selection process
 	const UE_IDLE = "Idle"; //UE is in idle mode
-	const UE_COMM = "Communicating"; //UE is in communication
-	const UE_OFF = "Off"; //UE is powered off
+	const UE_COMM = "In Call"; //UE is in communication
+	const UE_LQCOMM = "In Low Quality Call"; //UE is in communication
+	const UE_CALLDROP = "Call Drop"; //Call drop
 
 	class Network{
 		constructor(){
@@ -249,10 +250,40 @@
 			this.polys = [];
 		}
 
+		timer(ms){
+			return new Promise(resolve => setTimeout(resolve, ms));
+		}
+
 		// this.sensitivityThreshold=-140;  // sensitivity threshold : minimum thereshold allowing that the phone detects the signal 
 		// this.lowQialityThreshold=-120;
 		// this.highQualityThreshold=-100;
 		// this.expositionThreshold=-115;
+		updateIcon(){
+			if (this.marker) {
+				switch (this.status) {
+					case UE_OFF:
+						this.marker.setIcon(ueOffIcon);
+						break;
+					case UE_SELECT:
+						this.marker.setIcon(ueSearchingIcon);
+						break;
+					case UE_IDLE:
+						this.marker.setIcon(ueIdleIcon);
+						break;
+					case UE_COMM:
+						this.marker.setIcon(ueCallIcon);
+						break;
+					case UE_LQCOMM:
+						this.marker.setIcon(ueLowQualityCallIcon);
+						break;
+					case UE_CALLDROP:
+						this.marker.setIcon(ueCallDropIcon);
+						break;
+					default:
+						console.log("Unknown status");
+				}
+			}
+		}
 
 		selectAnt(){
 			console.log("Selection in progress");
@@ -274,9 +305,6 @@
 				} catch (error) {
 					console.log("erreur hors zone")
 				}
-
-				
-
 			}
 
 			if(this.selectedAnt!=previousAnt){
@@ -286,9 +314,25 @@
 			
 			this.removeConnection();
 			this.removeHandover();
-			if(this.receptionPower>=net.sensitivityThreshold){
-				this.drawConnection();
-				this.softHandover();
+			if(this.receptionPower<net.sensitivityThreshold){
+				if(this.status==UE_COMM || this.status==UE_LQCOMM){
+					this.endComm();
+					this.status=UE_CALLDROP;
+					this.updateIcon();
+					this.powerOn();
+				}
+			} else if(this.receptionPower>=net.sensitivityThreshold){
+				if(this.status==UE_SELECT){
+					this.idleMode();
+					this.drawConnection();
+				} else if(this.status==UE_COMM||this.status==UE_LQCOMM){
+					this.softHandover();
+					this.drawConnection();
+				} else if(this.status==UE_IDLE){
+					this.drawConnection();
+				} else{
+					console.log("UE moved but is turned off");
+				};
 			}
 		}
 
@@ -360,40 +404,67 @@
 			}
 		}
 
-		powerOn(){ //Change status to ON
-			this.status=UE_ON;
-			this.selectAnt();
+		//UE Management functions
+
+		async powerOn(){ //Change status to ON (Selection mode)
+			if(this.status==UE_OFF||this.status==UE_CALLDROP){
+				this.removeConnection();
+				this.removeHandover();
+				if(this.status==UE_CALLDROP){
+					await wait(1000);
+				} else {
+					this.marker.setIcon(ueOnIcon);
+					await wait(1000);
+				}
+
+				this.status=UE_SELECT;
+				this.updateIcon();
+				await wait(5000);
+				while(this.selectedAnt==null){
+					this.selectAnt();
+				}
+			}
+			
 		}
 
 		powerOff(){ //Change status to OFF
 			this.status=UE_OFF;
+			this.updateIcon();
+			
+			this.removeConnection();
+			this.removeHandover();
+
+			this.selectedAnt=null;
+			this.connectedAnt=null;
 		}
 
 		startComm(){ //Change status to Communicating
-			if(this.status==UE_ON){ //If UE is ON
+			if(this.status==UE_IDLE){ //If UE is ON
 				this.status=UE_COMM;
-			} else if(UE.status==UE_COMM){
-				alert("User equipment already in communication !");
+				this.updateIcon();
+				this.softHandover();
 			} else {
 				alert("User equipment not ready !");
 				getUEStatus();
 			}
 		}
 
-		//Need to implement end call functionnality in the future
+		endComm(){
+			if(this.status==UE_COMM ||this.status==UE_LQCOMM){
+				this.status=UE_IDLE;
+				this.updateIcon();
+
+				this.removeHandover();
+			}
+		}
 
 		idleMode(){ //Change status to Idle
-			if(this.status!=UE_OFF){ //If user equipment is not Off
+			if(this.status==UE_SELECT||this.status==UE_COMM||this.status==UE_LQCOMM){
 				this.status=UE_IDLE;
+				this.updateIcon();
 			} else {
 				alert("User equipment not ready !");
 				getUEStatus();
-			}
-		}
-
-		cellSelect(){ //Change status to Selecting -- Will be used later when implementing cell selection
-			if(this.status!=UE_OFF){
-				this.status=UE_SELECT;
 			}
 		}
 	}
@@ -462,13 +533,42 @@
 		//popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
 	});
 
-	var ueIcon = L.icon({ //UE icon import || Modified
+	var ueOffIcon = L.icon({ //UE icon import || Modified
 		iconUrl: './resources/userequipment.png',
 		iconSize: [38,50]
 	})
 
+	var ueSearchingIcon = L.icon({ //UE icon import || Modified
+		iconUrl: './resources/userequipmentsearching.gif',
+		iconSize: [38,50]
+	})
+
+	var ueOnIcon = L.icon({ //UE icon import || Modified
+		iconUrl: './resources/userequipmentsearching.png',
+		iconSize: [38,50]
+	})
+
+	var ueCallIcon = L.icon({ //UE icon import || Modified
+		iconUrl: './resources/userequipmentcall.png',
+		iconSize: [38,50]
+	})
+
+	var ueLowQualityCallIcon = L.icon({ //UE icon import || Modified
+		iconUrl: './resources/userequipmentweakcall.png',
+		iconSize: [38,50]
+	})
+
+	var ueCallDropIcon = L.icon({ //UE icon import || Modified
+		iconUrl: './resources/userequipmentcalldrop.png',
+		iconSize: [38,50]
+	})
+
+	var ueIdleIcon = L.icon({ //UE icon import || Modified
+		iconUrl: './resources/userequipmentidle.png',
+		iconSize: [38,50]
+	})
 	
-	
+
 	//local variables
 	var a;
 	var angleindex;
@@ -669,7 +769,7 @@
 	//Function used to place a UE on the map || Modified
 	function placeUE(name, location) { 
 		ue=new UserEquipment(name,location); //Create a new instance of the class UserEquipment
-		var mark= new L.marker([location.lat, location.lng],{icon: ueIcon}); //Get a marker of the coordinates where to place the UE
+		var mark= new L.marker([location.lat, location.lng],{icon: ueOffIcon}); //Get a marker of the coordinates where to place the UE
 		ue.marker=mark;
 		selectedUE=ue;
 		mark.bindTooltip(name); //Shows the UE name when mouse on the icon
@@ -694,7 +794,9 @@
 		ue.marker.setLatLng(loc);
 		ue.marker.remove();
 		ue.marker.addTo(mymap);
-		ue.selectAnt();
+		if(ue.status!=UE_OFF){
+			ue.selectAnt();
+		}
 	}
 
 
@@ -1021,12 +1123,12 @@
 	//Changes the status of UE to ON
 	function powerOnUE(){
 		selectedUE.powerOn();
-		alert(selectedUE.name+" powered On.");
+		console.log(selectedUE.name+" powered On.");
 	}
 	//Changes the status of UE to Off
 	function powerOffUE(){
 		selectedUE.powerOff();
-		alert(selectedUE.name+" powered Off.");
+		console.log(selectedUE.name+" powered Off.");
 	}
 	//Changes the status of UE to Communicating to simulate a call
 	function startUECall(){
