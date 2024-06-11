@@ -248,10 +248,11 @@
 			this.marker=null;
 			this.antennas = [];
 			this.polys = [];
+			this.prevAntLink=null;
 		}
 
-		timer(ms){
-			return new Promise(resolve => setTimeout(resolve, ms));
+		async timer(ms){
+			return (await wait(ms));
 		}
 
 		// this.sensitivityThreshold=-140;  // sensitivity threshold : minimum thereshold allowing that the phone detects the signal 
@@ -285,7 +286,7 @@
 			}
 		}
 
-		selectAnt(){
+		async selectAnt(){
 			console.log("Selection in progress");
 			
 			this.iUE=Math.floor((this.location.lat-net.southCorner.lat)/latBin); //Coordonnées de la cellule du réseau considéré
@@ -329,6 +330,12 @@
 				} else if(this.status==UE_COMM||this.status==UE_LQCOMM){
 					this.softHandover();
 					this.drawConnection();
+					if(this.selectedAnt!=previousAnt){
+						var prevAntID = net.findAntennaById(previousAnt);
+						this.prevAntLink = L.polyline([[this.location.lat,this.location.lng],[prevAntID.location.lat,prevAntID.location.lng]], {color: 'cyan',weight:5}).addTo(mymap);
+						holdItinerary=true;
+						//mymap.removeLayer(prevAntLink);
+					}
 				} else if(this.status==UE_IDLE){
 					this.drawConnection();
 				} else{
@@ -460,7 +467,7 @@
 		}
 
 		idleMode(){ //Change status to Idle
-			if(this.status==UE_SELECT||this.status==UE_COMM||this.status==UE_LQCOMM){
+			if(this.status==UE_SELECT){//||this.status==UE_COMM||this.status==UE_LQCOMM){
 				this.status=UE_IDLE;
 				this.updateIcon();
 			} else {
@@ -942,6 +949,7 @@
 			if(holdItinerary==true){
 				await wait(1000);
 				holdItinerary=false;
+				mymap.removeLayer(ue.prevAntLink);
 			}
 			var vector = new L.LatLng(vectors[index].lat, vectors[index].lng)
 			moveUE(ue, vector);
