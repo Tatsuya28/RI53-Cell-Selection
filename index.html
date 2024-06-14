@@ -251,9 +251,6 @@
 			this.prevAntLink=null;
 		}
 
-		async timer(ms){
-			return (await wait(ms));
-		}
 
 		// this.sensitivityThreshold=-140;  // sensitivity threshold : minimum thereshold allowing that the phone detects the signal 
 		// this.lowQialityThreshold=-120;
@@ -330,6 +327,12 @@
 				} else if(this.status==UE_COMM||this.status==UE_LQCOMM){
 					this.softHandover();
 					this.drawConnection();
+					if(this.receptionPower<net.lowQialityThreshold){
+						this.status=UE_LQCOMM;
+					} else {
+						this.status=UE_COMM;
+					}
+					this.updateIcon();
 					if(this.selectedAnt!=previousAnt){
 						var prevAntID = net.findAntennaById(previousAnt);
 						this.prevAntLink = L.polyline([[this.location.lat,this.location.lng],[prevAntID.location.lat,prevAntID.location.lng]], {color: 'cyan',weight:5}).addTo(mymap);
@@ -1148,7 +1151,7 @@
 	}
 	//Changes the status of UE to Idle to simulate idle mode and/or end of call
 	function endUECall(){
-		selectedUE.idleMode(); //UE goes IDLE after ending comm
+		selectedUE.endComm(); //UE goes IDLE after ending comm
 	}
 	//Disable buttons of UE menu
 	function cancelUE(){
