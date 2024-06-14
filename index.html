@@ -18,11 +18,9 @@
 	integrity="sha512-puBpdR0798OZvTTbP4A8Ix/l+A4dHDD0DGqYW6RQ+9jxkRFclaxxQb/SJAWZfWAkuyeQUytO7+7N4QKrDh+drA=="
 	crossorigin=""/>
 
-	<!-- IMPLEMENTé PAR THOMAS *********************************************************************************************-->
 	<link rel="stylesheet" href="leaflet-routing-machine.css" />
 	<link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.css">
 	
-	<!--FIM IMPLEMENTé PAR THOMAS **************************************************************************************** -->
 
 	<script src="https://unpkg.com/leaflet@1.4.0/dist/leaflet.js"
 	integrity="sha512-QVftwZFqvtRNi0ZyCtsznlKSWOStnDORoefr1enyq5mVL4tmKB3S/EnC3rRJcxCPavG10IcrVGSmPh6Qw5lwrg=="
@@ -72,7 +70,6 @@
 		}
 	</style>
 
-	<!-- IMPLEMENTé PAR THOMAS ************************************************************************************************-->
 	<style>
 	.dialog-overlay {
 		position: fixed;
@@ -518,7 +515,7 @@
 										//0:select area's SW corner or load net, 1: add site, 2: no action, 3:add building, 4: elevation,
 										//5:select action on the site
 	var selectedSite; 					//currently selected site (right click), in order to be handled
-	var selectedUE;						//currently selected user equipment in order to be handled || Modified
+	var selectedUE;						//currently selected user equipment in order to be handled 
 	var selectedBuilding				//currently selected building (right click), in order to change the height
 	var siteIcon = L.icon({
 		iconUrl: './resources/site.png',
@@ -616,7 +613,7 @@
 	var LFS;
 	var L;
 	var bin = [];
-	var marker = L.marker(); //Modified Creation of the two markers permitting to draw the itinerary
+	var marker = L.marker(); //Creation of the two markers permitting to draw the itinerary
     var marker2 = L.marker();
 	
 	var holdItinerary=false;
@@ -725,7 +722,7 @@
 			document.getElementById('batiment').disabled = '';
 			document.getElementById('saveBat').disabled = '';
 			document.getElementById('loadBat').disabled = '';
-			document.getElementById('userequipment').disabled = ''; //Activate button || Modified
+			document.getElementById('userequipment').disabled = ''; //Activate button
 
 			
 			document.getElementById('elevation').disabled = '';
@@ -775,7 +772,7 @@
 	}
 
 
-	//Function used to place a UE on the map || Modified
+	//Function used to place a UE on the map
 	function placeUE(name, location) { 
 		ue=new UserEquipment(name,location); //Create a new instance of the class UserEquipment
 		var mark= new L.marker([location.lat, location.lng],{icon: ueOffIcon}); //Get a marker of the coordinates where to place the UE
@@ -809,7 +806,7 @@
 	}
 
 
-	//Function used to place the marker on the origin for the path of the user ||Modified 
+	//Function used to place the marker on the origin for the path of the user
 
 	function placeorigin(latlng, originset, destinationset){
         latlngorigine=latlng
@@ -819,7 +816,7 @@
 		finishItinerary(originset, destinationset);
     }
 
-	//Function used to place a marker on the destination for the path of the user ||Modified 
+	//Function used to place a marker on the destination for the path of the user
 	function placedestination(latlng, originset, destinationset){
         latlngdest=latlng
         marker2
@@ -1678,7 +1675,7 @@
 	function createitinerary(){ 
 		document.getElementById('message').value="Place the origin and destination points.";
 		modeclick=8;
-	} //Modified
+	}
 
 	/*function addAntennaConstructor(){
 		document.getElementById('message').value="Place the antenna ! or Escap to cancel !";
@@ -1871,8 +1868,8 @@
 		else if(modeclick==1) {modeclick=2;name=prompt("Give a name for the site","");placeSiteConstructor(name,e.latlng);}
 		else if(modeclick==3) {modeclick=2;placeBat(e.latlng);}
 		else if(modeclick==4) {modeclick=2;getElevation(e.latlng);document.getElementById('message').value = "Select an action!";}
-		else if(modeclick==7) {modeclick=2;name=prompt("Give a name for the user equipment","");placeUE(name,e.latlng);} //Flag used here || Modified
-		else if(modeclick==8) {modeclick=8; latitudelongitude=e.latlng; afficherDialog();}//Flag used here to place the  origin point for the path of the user || Modified Thomas
+		else if(modeclick==7) {modeclick=2;name=prompt("Give a name for the user equipment","");placeUE(name,e.latlng);} //Flag used here
+		else if(modeclick==8) {modeclick=8; latitudelongitude=e.latlng; afficherDialog();}//Flag used here to place the  origin point for the path of the user 
 	}
 	function onMapDbClick(e) {
 		alert("You dble clicked the map at " + e.latlng);
@@ -1958,7 +1955,6 @@ function loadNet(){
 
 </head>
   <body>
-	<!-- Modified Thomas -->
 	
 	<script src="https://unpkg.com/leaflet-routing-machine/dist/leaflet-routing-machine.js"></script>
 
@@ -1975,9 +1971,9 @@ function loadNet(){
 				<!--<button type="button" id="axes" value="Ajouter un axe routier" onclick="addaxe()" disabled='disabled'><iaddSitemg src="routes.png"> </button>-->
 				<button type="button" id="batiment" value="Add a building" onclick="batiment()" disabled='disabled'><img src="./resources/bat.png"> </button>
 				<button type="button" title="add new site" id="site" value="Add a site" onclick="addSite()" disabled='disabled'><img src="./resources/pylone.png"> </button>
-				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="./resources/addUE.png"> </button> <!--Modified -->
+				<button type="button" title="Add new UE" id="userequipment" value="Add User Equipment" onclick="addUE()" disabled='disabled'><img src="./resources/addUE.png"> </button>
 				<!--<button type="button" title="add new antenna" id="antenna" value="Add an antenna" onclick="addAntennaConstructor()" disabled='disabled'><img src="antenna.png"> </button>-->
-				<button type="button" title="create itinerary" id="itinerary" value="create itinerary" onclick="createitinerary()" disabled='disabled'><img src="./resources/itinerary.png"> </button> <!--Modified -->
+				<button type="button" title="create itinerary" id="itinerary" value="create itinerary" onclick="createitinerary()" disabled='disabled'><img src="./resources/itinerary.png"> </button>
 
 				<button type="button" title="scan attractive zones" id="store" value="Add an attractive zone " onclick="scanstores()" disabled='disabled'><img src="./resources/store.png"> </button>
 				 
@@ -2042,7 +2038,7 @@ function loadNet(){
 					<input type="button" id="removeantenna" value="Remove antenna" onclick="removeAntenna()" style="width: 48%;"/>
 					<input type="button" id="cancelsite"    value="Cancel" onclick="cancelSite()" style="width: 48%;"/>
 				</div>
-				<!--Show buttons to manipulate UE characteristics || Modified--> 
+				<!--Show buttons to manipulate UE characteristics--> 
 				<div id="frameuserequipment">
 					<input type="button" id="UE_PWR_ON"  value="Turn ON" onclick="powerOnUE()" style="width: 48%;"/>
 					<input type="button" id="UE_PWR_OFF"    value="Turn OFF" onclick="powerOffUE()" style="width: 48%;"/>
@@ -2051,7 +2047,7 @@ function loadNet(){
 					<input type="button" id="UE_GET_STATUS"    value="UE Status" onclick="getUEStatus()" style="width: 48%;"/>
 					<input type="button" id="UE_CANCEL"    value="Cancel" onclick="cancelUE()" style="width: 48%;"/>
 				</div>
-				<div id="frameitinerary"> <!--Modified-->
+				<div id="frameitinerary">
 					<label for="TIME_ITINERARY" style="display: inline; width: 100%;"> 
                         duration : <input type="number" id="TIME_ITINERARY" name="TIME_ITINERARY" value=30 min="5" max="45" style="width: 25%;"/> s
                     </label>
@@ -2115,7 +2111,6 @@ function loadNet(){
 		</div>
 	</div>
 
-	<!-- Modified /////////////////////////////////////////////////////////////////////////////////////////////-->
 	<!-- Apparition of the dialog box that permits to choose between origin and destination for the itinerary-->
 	<div id="dialog" class="dialog-overlay">
         <div class="dialog-box">
@@ -2127,7 +2122,6 @@ function loadNet(){
             </div>
         </div>
     </div>
-	<!-- fin modified////////////////////////////////////////////////////////////////////////////////////////// -->
   </body>
 
 
@@ -2294,9 +2288,9 @@ frameantenna=document.getElementById('frameantenna');
 frameantenna.style.visibility='hidden';
 framesite=document.getElementById('framesite'); 
 framesite.style.visibility='hidden';
-frameuserequipment=document.getElementById('frameuserequipment'); //Disable buttons visibility of UE menu || Modified
+frameuserequipment=document.getElementById('frameuserequipment'); //Disable buttons visibility of UE menu 
 frameuserequipment.style.visibility='hidden';
-frameitinerary=document.getElementById('frameitinerary'); //Disable buttons visibility of itinerary menu || Modified
+frameitinerary=document.getElementById('frameitinerary'); //Disable buttons visibility of itinerary menu
 frameitinerary.style.visibility='hidden';
 </script>
 </html>
