@@ -542,37 +542,38 @@
 		//popupAnchor:  [-3, -76] // point from which the popup should open relative to the iconAnchor
 	});
 
-	var ueOffIcon = L.icon({ //UE icon import || Modified
+	//UE icon imports
+	var ueOffIcon = L.icon({
 		iconUrl: './resources/userequipment.png',
 		iconSize: [38,50]
 	})
 
-	var ueSearchingIcon = L.icon({ //UE icon import || Modified
+	var ueSearchingIcon = L.icon({ 
 		iconUrl: './resources/userequipmentsearching.gif',
 		iconSize: [38,50]
 	})
 
-	var ueOnIcon = L.icon({ //UE icon import || Modified
+	var ueOnIcon = L.icon({ 
 		iconUrl: './resources/userequipmentsearching.png',
 		iconSize: [38,50]
 	})
 
-	var ueCallIcon = L.icon({ //UE icon import || Modified
+	var ueCallIcon = L.icon({ 
 		iconUrl: './resources/userequipmentcall.png',
 		iconSize: [38,50]
 	})
 
-	var ueLowQualityCallIcon = L.icon({ //UE icon import || Modified
+	var ueLowQualityCallIcon = L.icon({ 
 		iconUrl: './resources/userequipmentweakcall.png',
 		iconSize: [38,50]
 	})
 
-	var ueCallDropIcon = L.icon({ //UE icon import || Modified
+	var ueCallDropIcon = L.icon({
 		iconUrl: './resources/userequipmentcalldrop.png',
 		iconSize: [38,50]
 	})
 
-	var ueIdleIcon = L.icon({ //UE icon import || Modified
+	var ueIdleIcon = L.icon({ 
 		iconUrl: './resources/userequipmentidle.png',
 		iconSize: [38,50]
 	})
@@ -828,7 +829,7 @@
 		finishItinerary(originset, destinationset);
     }
 
-	//  || Modified 
+	//Finalize itinerary creation
 	function finishItinerary(originset, destinationset){
 		if(destinationset==1 && originset==1){
 			frameitinerary.style.visibility="visible"; //Show the buttons
@@ -837,7 +838,7 @@
 			destinationset=0;
 		}
 	}
-	// Function to show dialog box || Modified Thomas
+	// Function to show dialog box
 	function afficherDialog() {
         document.getElementById("dialog").style.display = "flex";
     }
@@ -846,7 +847,7 @@
 		document.getElementById("dialog").style.display = "none";
 	}
 
-	//function to manage user's choice ||Modified Thomas
+	//Function to manage user's choice
 	var originset = 0;
 	var destinationset = 0;
 	function chooseOption(option) {
@@ -865,8 +866,7 @@
             document.getElementById("dialog").style.display = "none";
         }
 
-	// function to use the API of OSRM to find a travel itinerary that can be used by the user of the phone to simulate a movement.
-	//Modified
+	//Function to use the API of OSRM to find a travel itinerary that can be used by the user of the phone to simulate a movement.
 	function addItinerary() {
 		var durationitinerary = document.getElementById("TIME_ITINERARY").value * 1000
 		var currentUE=selectedUE;
@@ -937,13 +937,10 @@
 		
 		frameitinerary.style.visibility='hidden';
 	}
-	async function travelItineraryConstant(ue, startlocation, vectors, totalTime){ //Hakan
+	async function travelItineraryConstant(ue, startlocation, vectors, totalTime){ 
 		var timeInterval = totalTime/vectors.length * 0.92;
 		await wait(2000);
-		//console.log("Checkpoint 1 : " + vectors.length);
-		// console.log("Checkpoint 2 : " + vectors);
-		// console.log("Checkpoint 3 : " + JSON.stringify(vectors[1]));
-
+	
 		let index = 0;
 		ue.location = startlocation
 		while(index<vectors.length){
@@ -955,8 +952,7 @@
 			var vector = new L.LatLng(vectors[index].lat, vectors[index].lng)
 			moveUE(ue, vector);
 			index++;
-			//console.log("Index"+index);
-			//console.log(vectors[index]);
+
 			await wait(timeInterval);
 		}
 	}
@@ -964,19 +960,19 @@
 
 
 	async function travelItineraryVariable(ue, startlocation, vectors, totalTime) {
-		const speeds = [0.5, 1, 1.5]; // Facteurs de vitesse
+		const speeds = [0.5, 1, 1.5]; //Speed factor
 		const totalSegments = vectors.length;
-		let remainingTime = totalTime; // Temps restant à distribuer
-		let remainingSegments = totalSegments; // Segments restants à traiter
+		let remainingTime = totalTime; //Time to distribute
+		let remainingSegments = totalSegments; //Number of remaining segments to process
 
 		ue.location = startlocation;
 
 		while (remainingSegments > 0) {
-			// Choisir une vitesse aléatoire et une longueur de segment
+			//Choose a random speed and section length
 			const currentSpeed = speeds[Math.floor(Math.random() * speeds.length)];
 			const segmentLength = Math.ceil(Math.random() * remainingSegments / 3);
 			
-			// Calculer l'intervalle de temps pour le segment actuel
+			//Calculate time interval of the current section
 			const timeForSegment = (remainingTime / remainingSegments) * currentSpeed;
 			
 			for (let i = 0; i < segmentLength && remainingSegments > 0; i++) {
@@ -989,26 +985,6 @@
 		}
 	}
 
-	// // move the  marker along  the itinerary // Modified
-	// function travelItinerary(marker, vectors, totalTime) { 
-	// 	var intervalTime = totalTime / vectors.length * 0.96;
-
-	// 	let index = 0;
-	// 	function moveMarker() {
-	// 		if (index < vectors.length) {
-	// 			var currentLat = marker.getLatLng().lat;
-	// 			var currentLng = marker.getLatLng().lng;
-	// 			var newLat = currentLat + vectors[index].lat;
-	// 			var newLng = currentLng + vectors[index].lng;
-	// 			marker.setLatLng([newLat, newLng]);
-	// 			index++;
-	// 			setTimeout(moveMarker, intervalTime);
-	// 		}
-	// 	}
-
-	// 	// start the movement of the marker
-	// 	moveMarker();
-	// }
 	
 	function listantennas(){
 		for(i=0;i<selectedSite.antennas.length;i++)
@@ -1127,7 +1103,7 @@
 		modeclick=2;
 		
 	}
-	//Show the status of the selected user equipment || Modified
+	//Show the status of the selected user equipment
 	function getUEStatus(){ 
 		modeclick=2;
 		alert(selectedUE.name+" status : "+selectedUE.status);
