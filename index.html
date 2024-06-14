@@ -192,7 +192,7 @@
 			this.nbsites=0;
 			
 		}
-		findAntennaById(antID) { //Modif
+		findAntennaById(antID) { //Returns the antenna which corresponds to the input ID
 			for(a=0;a<this.nbantennas;a++){
 				if(this.antennas[a].id==antID){
 					return this.antennas[a];
@@ -236,27 +236,22 @@
 	class UserEquipment { //Defining the class for user equipments
 		constructor(name,location) //Constructor function
 		{
-			this.name=name;
-			this.location=location;
+			this.name=name; //UE name
+			this.location=location; //UE location in geographical coordinates
+			this.iUE; //Bin coordinates on the X axis
+			this.jUE; //Bin coordinates on the Y axis
 			this.status=UE_OFF; //By default, UE is powered off
-			this.selectedAnt=null;//big modif
-			this.receptionPower=-1000;
-			this.iUE;
-			this.jUE;
-			this.connectedAnt=null;
-			this.polyline=null;
-			this.marker=null;
-			this.antennas = [];
-			this.polys = [];
-			this.prevAntLink=null;
+			this.selectedAnt=null; //ID of the selected antennas
+			this.connectedAnt=null; //Connected antenna object
+			this.receptionPower=-1000; //Initialized value of the reception power
+			this.polyline=null; //Line object between the UE and the connected antenna
+			this.marker=null; //Map marker of the UE
+			this.antennas = []; //List of antennas to handle handover
+			this.polys = []; //List of lines between antennas and the UE, used for handover
+			this.prevAntLink=null; //Link between the UE and the antenna it was connected to previously
 		}
 
-
-		// this.sensitivityThreshold=-140;  // sensitivity threshold : minimum thereshold allowing that the phone detects the signal 
-		// this.lowQialityThreshold=-120;
-		// this.highQualityThreshold=-100;
-		// this.expositionThreshold=-115;
-		updateIcon(){
+		updateIcon(){ //Function used to update the UE icon based on its current status
 			if (this.marker) {
 				switch (this.status) {
 					case UE_OFF:
@@ -283,48 +278,51 @@
 			}
 		}
 
-		async selectAnt(){
+		async selectAnt(){ //Antenna selection method
 			console.log("Selection in progress");
 			
-			this.iUE=Math.floor((this.location.lat-net.southCorner.lat)/latBin); //Coordonnées de la cellule du réseau considéré
-			this.jUE=Math.floor((this.location.lng-net.southCorner.lng)/lngBin);
+			this.iUE=Math.floor((this.location.lat-net.southCorner.lat)/latBin); //X coordinates of the bin where the UE is
+			this.jUE=Math.floor((this.location.lng-net.southCorner.lng)/lngBin); //Y coordinates of the bin where the UE is
 			
-			this.receptionPower=-1000;
-			var previousAnt = this.selectedAnt;
+			this.receptionPower=-1000; //Reset the reception power before making a new measurement
+			var previousAnt = this.selectedAnt; //Storing details about the previous antenna
 
-			for(a=0;a<net.nbantennas;a++){
+			for(a=0;a<net.nbantennas;a++){ //For each antenna on the network
 				try {
-					var antPower = powerMatrix[a][this.iUE][this.jUE];
-					if(antPower>this.receptionPower){
+					var antPower = powerMatrix[a][this.iUE][this.jUE]; //Get the reception power of antenna a at UE's bin location from powerMatrix
+					if(antPower>this.receptionPower){ //Determine the antenna with the greatest emission power and connect to it
 						this.receptionPower=antPower;
 						this.selectedAnt=a;
-						this.connectedAnt=net.findAntennaById(this.selectedAnt);
+						this.connectedAnt=net.findAntennaById(this.selectedAnt); 
 				}
 				} catch (error) {
-					console.log("erreur hors zone")
+					console.log("Out of Area")
 				}
 			}
 
 			if(this.selectedAnt!=previousAnt){
-				//alert("New antenna selected !");
-				console.log("Selected new antenna with id"+this.selectedAnt+" received power is "+this.receptionPower);
+				console.log("Selected new antenna with id "+this.selectedAnt+" and received power is "+this.receptionPower); //For debugging purposes
 			}
 			
-			this.removeConnection();
+			this.removeConnection(); //Remove all lines between the UE and antennas
 			this.removeHandover();
-			if(this.receptionPower<net.sensitivityThreshold){
-				if(this.status==UE_COMM || this.status==UE_LQCOMM){
+
+			if(this.receptionPower<net.sensitivityThreshold){ 
+				if(this.status==UE_COMM || this.status==UE_LQCOMM){ //Call drop and selection process if measured power lower than threshold
 					this.endComm();
 					this.status=UE_CALLDROP;
 					holdItinerary=true;
 					this.updateIcon();
 					this.powerOn();
+				} else if(this.status==UE_IDLE){ //Selection process if UE was in idle mode and measured power bellow threshold
+					this.status=UE_SELECT;
+					this.updateIcon();
 				}
-			} else if(this.receptionPower>=net.sensitivityThreshold){
-				if(this.status==UE_SELECT){
+			} else if(this.receptionPower>=net.sensitivityThreshold){ //If measured power higher than threshold
+				if(this.status==UE_SELECT){ //Connect to antenna and go idle if in selection process
 					this.idleMode();
 					this.drawConnection();
-				} else if(this.status==UE_COMM||this.status==UE_LQCOMM){
+				} else if(this.status==UE_COMM||this.status==UE_LQCOMM){ //Handover process if UE in call
 					this.softHandover();
 					this.drawConnection();
 					if(this.receptionPower<net.lowQialityThreshold){
@@ -333,7 +331,7 @@
 						this.status=UE_COMM;
 					}
 					this.updateIcon();
-					if(this.selectedAnt!=previousAnt){
+					if(this.selectedAnt!=previousAnt){ //Draw handover link
 						var prevAntID = net.findAntennaById(previousAnt);
 						this.prevAntLink = L.polyline([[this.location.lat,this.location.lng],[prevAntID.location.lat,prevAntID.location.lng]], {color: 'cyan',weight:5}).addTo(mymap);
 						holdItinerary=true;
@@ -346,12 +344,12 @@
 			}
 		}
 
-		softHandover(){
+		softHandover(){ //Manage UE soft
 
 			this.antennas = []; // Array of detected antennas
-			var areaRadiusHandover = 3;
+			var areaRadiusHandover = 3; //Radius around the UE where we need to analyse for a handover
 
-			var xOrigin = this.iUE-areaRadiusHandover;
+			var xOrigin = this.iUE-areaRadiusHandover; //Area around UE
 			if(xOrigin<0){
 				xOrigin=0;
 			} else if (xOrigin>net.areaWidth){
@@ -366,7 +364,8 @@
 			}
 
 
-			for(var xPos=xOrigin;xPos<this.iUE+areaRadiusHandover;xPos++){
+
+			for(var xPos=xOrigin;xPos<this.iUE+areaRadiusHandover;xPos++){ //List all antenna with a reception power greater than the threshold around the UE
 				for(var yPos=yOrigin;yPos<this.iUE+areaRadiusHandover;yPos++){
 					for(var id=0;id<net.nbantennas;id++){
 						if(id==this.selectedAnt){
@@ -382,10 +381,10 @@
 				}
 			}
 
-			this.drawHandover();
+			this.drawHandover(); //Draw handover lines between UE and antennas in the list
 		}
 
-		drawHandover(){
+		drawHandover(){ //Handover line drawing function
 			var handoverAntenna = null;
 
 			for(var i=0;i<this.antennas.length;i++){
@@ -395,7 +394,7 @@
 			}
 		}
 
-		removeHandover(){
+		removeHandover(){ //Function to erase drawn lines for handover
 			for(var i=0;i<this.polys.length;i++){
 				mymap.removeLayer(this.polys[i]);
 			}
@@ -403,11 +402,11 @@
 			this.polys=[];
 		}
 
-		drawConnection(){ //Modif
+		drawConnection(){ //Draw the connection between UE and antenna with greatest reception power
 			this.polyline = L.polyline([[this.location.lat,this.location.lng],[this.connectedAnt.location.lat,this.connectedAnt.location.lng]], {color: 'red'}).addTo(mymap);
 		}
 		
-		removeConnection(){
+		removeConnection(){ //Remove connection between UE and connected antenna
 			if(this.polyline){
 				mymap.removeLayer(this.polyline);
 				this.polyline=null;
@@ -417,7 +416,7 @@
 		//UE Management functions
 
 		async powerOn(){ //Change status to ON (Selection mode)
-			if(this.status==UE_OFF||this.status==UE_CALLDROP){
+			if(this.status==UE_OFF||this.status==UE_CALLDROP){ //If UE is turned off or the connection drops, start selection process
 				this.removeConnection();
 				this.removeHandover();
 				if(this.status==UE_CALLDROP){
@@ -449,7 +448,7 @@
 		}
 
 		startComm(){ //Change status to Communicating
-			if(this.status==UE_IDLE){ //If UE is ON
+			if(this.status==UE_IDLE){ 
 				this.status=UE_COMM;
 				this.updateIcon();
 				this.softHandover();
@@ -459,7 +458,7 @@
 			}
 		}
 
-		endComm(){
+		endComm(){ //End communication
 			if(this.status==UE_COMM||this.status==UE_LQCOMM){
 				this.status=UE_IDLE;
 				this.updateIcon();
